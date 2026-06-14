@@ -13,6 +13,7 @@ from datetime import datetime, timezone
 APP_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 HTML_FILE = os.path.join(APP_DIR, "index.html")
 DATA_FILE = os.path.join(APP_DIR, "boot-data.json")
+TRASH_FILE = os.path.join(APP_DIR, "trash-data.json")
 BACKUP_DIR = os.path.join(APP_DIR, "backup")
 MAX_BACKUPS = 30
 PORT = 18792
@@ -63,6 +64,26 @@ def load_data():
     except Exception:
         pass
     return {"bootCount": 0, "shutdownCount": 0, "sessions": []}
+
+
+def load_trash():
+    """读取回收站数据"""
+    try:
+        if os.path.exists(TRASH_FILE):
+            with open(TRASH_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+    except Exception:
+        pass
+    return {"sessions": []}
+
+
+def save_trash(trash):
+    """写入回收站数据"""
+    try:
+        with open(TRASH_FILE, "w", encoding="utf-8") as f:
+            json.dump(trash, f, ensure_ascii=False, indent=2)
+    except Exception:
+        pass
 
 
 def save_data(data):

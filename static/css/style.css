@@ -509,6 +509,115 @@
   .btn-del:hover { background: rgba(239,68,68,0.2); border-color: rgba(239,68,68,0.5); color: #fecaca; transform: translateY(-1px); box-shadow: 0 2px 12px rgba(239,68,68,0.15); }
   .admin-empty { text-align: center; color: #475569; padding: 48px; font-size: 0.85rem; }
 
+  /* 管理员标签页 */
+  .admin-tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 20px;
+    background: rgba(15,23,42,0.6);
+    border-radius: 12px;
+    padding: 4px;
+  }
+  .admin-tab {
+    padding: 8px 18px;
+    border-radius: 9px;
+    border: none;
+    background: transparent;
+    color: #64748b;
+    font-family: inherit;
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.25s;
+    flex: 1;
+    text-align: center;
+  }
+  .admin-tab:hover { color: #94a3b8; }
+  .admin-tab.active {
+    background: rgba(var(--accent-rgb),0.15);
+    color: var(--accent-light);
+  }
+  .admin-tab-content {
+    display: none;
+  }
+  .admin-tab-content.active {
+    display: block;
+  }
+
+  /* 回收站恢复按钮 */
+  .btn-restore {
+    background: rgba(16,185,129,0.1);
+    border: 1px solid rgba(16,185,129,0.25);
+    color: #6ee7b7;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 0.78rem;
+    font-weight: 600;
+    padding: 5px 14px;
+    border-radius: 8px;
+    transition: all 0.25s;
+  }
+  .btn-restore:hover {
+    background: rgba(16,185,129,0.2);
+    border-color: rgba(16,185,129,0.5);
+    color: #a7f3d0;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 12px rgba(16,185,129,0.15);
+  }
+
+  /* 添加记录表单 */
+  .add-form {
+    background: rgba(30,41,59,0.4);
+    border: 1px solid rgba(100,116,139,0.12);
+    border-radius: 14px;
+    padding: 24px;
+    max-width: 460px;
+  }
+  .form-group {
+    margin-bottom: 18px;
+  }
+  .form-group label {
+    display: block;
+    font-size: 0.82rem;
+    color: #94a3b8;
+    margin-bottom: 8px;
+    font-weight: 500;
+  }
+  .form-required { color: #f87171; }
+  .form-hint { color: #475569; font-weight: 400; font-size: 0.75rem; }
+  .form-input {
+    width: 100%;
+    padding: 10px 14px;
+    border-radius: 10px;
+    border: 1px solid rgba(100,116,139,0.2);
+    background: rgba(15,23,42,0.8);
+    color: #e2e8f0;
+    font-family: inherit;
+    font-size: 0.85rem;
+    transition: border-color 0.2s;
+    box-sizing: border-box;
+  }
+  .form-input:focus {
+    outline: none;
+    border-color: rgba(var(--accent-rgb),0.5);
+    box-shadow: 0 0 0 3px rgba(var(--accent-rgb),0.1);
+  }
+  .form-input::-webkit-calendar-picker-indicator {
+    filter: invert(0.6);
+    cursor: pointer;
+  }
+  .form-actions {
+    margin-top: 20px;
+  }
+  .form-msg {
+    margin-top: 12px;
+    font-size: 0.8rem;
+    min-height: 1.2em;
+    transition: opacity 0.3s;
+  }
+  .form-msg.success { color: #6ee7b7; }
+  .form-msg.error { color: #f87171; }
+
   .section-header {
     display: flex;
     justify-content: space-between;
@@ -850,6 +959,39 @@
     color: #fca5a5;
     box-shadow: none;
   }
+  [data-theme="mica"] .btn-restore {
+    background: rgba(16,185,129,0.06);
+    border-color: rgba(16,185,129,0.15);
+    color: #6ee7b7;
+  }
+  [data-theme="mica"] .btn-restore:hover {
+    background: rgba(16,185,129,0.12);
+    color: #a7f3d0;
+    box-shadow: none;
+  }
+  [data-theme="mica"] .admin-tabs {
+    background: rgba(40,40,40,0.7);
+  }
+  [data-theme="mica"] .admin-tab.active {
+    background: rgba(255,255,255,0.06);
+    color: #cbd5e1;
+  }
+  [data-theme="mica"] .add-form {
+    background: rgba(40,40,40,0.5);
+    border-color: rgba(255,255,255,0.06);
+  }
+  [data-theme="mica"] .form-input {
+    background: rgba(255,255,255,0.04);
+    border-color: rgba(255,255,255,0.08);
+    color: #cbd5e1;
+  }
+  [data-theme="mica"] .form-input:focus {
+    border-color: rgba(255,255,255,0.2);
+    box-shadow: none;
+  }
+  [data-theme="mica"] .form-group label { color: #94a3b8; }
+  [data-theme="mica"] .form-msg.success { color: #6ee7b7; }
+  [data-theme="mica"] .form-msg.error { color: #f87171; }
   [data-theme="mica"] .admin-panel {
     background: var(--mica-bg) !important;
     border-color: var(--mica-border) !important;
@@ -1013,6 +1155,16 @@
   body.light-mode .btn-close:hover { background: rgba(0,0,0,0.06); color: #1e293b; }
   body.light-mode .btn-del { background: rgba(239,68,68,0.06); border-color: rgba(239,68,68,0.2); color: #dc2626; }
   body.light-mode .btn-del:hover { background: rgba(239,68,68,0.12); border-color: rgba(239,68,68,0.35); color: #b91c1c; }
+  body.light-mode .btn-restore { background: rgba(16,185,129,0.06); border-color: rgba(16,185,129,0.2); color: #059669; }
+  body.light-mode .btn-restore:hover { background: rgba(16,185,129,0.12); border-color: rgba(16,185,129,0.35); color: #047857; }
+  body.light-mode .admin-tabs { background: rgba(0,0,0,0.03); }
+  body.light-mode .admin-tab { color: #64748b; }
+  body.light-mode .admin-tab:hover { color: #334155; }
+  body.light-mode .admin-tab.active { background: rgba(var(--accent-rgb),0.08); color: #7c3aed; }
+  body.light-mode .add-form { background: rgba(0,0,0,0.02); border-color: rgba(0,0,0,0.06); }
+  body.light-mode .form-input { background: rgba(255,255,255,0.8); border-color: rgba(0,0,0,0.1); color: #1e293b; }
+  body.light-mode .form-input:focus { border-color: rgba(var(--accent-rgb),0.4); }
+  body.light-mode .form-group label { color: #64748b; }
   body.light-mode .records-empty,
   body.light-mode .admin-empty { color: #94a3b8; }
   body.light-mode .filter-bar input[type="date"] { background: rgba(0,0,0,0.03); border-color: rgba(0,0,0,0.1); color: #1e293b; }

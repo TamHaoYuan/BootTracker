@@ -30,6 +30,8 @@ class DataHandler(BaseHTTPRequestHandler):
                 threading.Thread(target=self._server.shutdown, daemon=True).start()
         elif self.path == "/api/backups":
             self._list_backups()
+        elif self.path == "/api/trash":
+            self._json_response(D.load_trash())
         else:
             self._json_response({"error": "not found"}, 404)
 
@@ -52,6 +54,34 @@ class DataHandler(BaseHTTPRequestHandler):
                 self._stop_event.set()
             if self._server:
                 threading.Thread(target=self._server.shutdown, daemon=True).start()
+        elif self.path == "/api/trash/restore":
+            length = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(length)
+            try:
+                req = json.loads(body)
+                self._trash_restore(req.get("id"))
+            except Exception as e:
+                self._json_response({"error": str(e)}, 400)
+        elif self.path == "/api/trash/clear":
+            D.save_trash({"sessions": []})
+            self._json_response({"ok": True})
+        elif self.path == "/api/trash":
+            length = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(length)
+            try:
+                trash = json.loads(body)
+                D.save_trash(trash)
+                self._json_response({"ok": True})
+            except Exception as e:
+                self._json_response({"error": str(e)}, 400)
+        elif self.path == "/api/add-session":
+            length = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(length)
+            try:
+                req = json.loads(body)
+                self._add_session(req)
+            except Exception as e:
+                self._json_response({"error": str(e)}, 400)
         else:
             self._json_response({"error": "not found"}, 404)
 
@@ -74,6 +104,58 @@ class DataHandler(BaseHTTPRequestHandler):
             self._json_response({"backups": files})
         except Exception:
             self._json_response({"backups": []})
+
+    def _trash_restore(self, session_id):
+        """从回收站恢复记录到主数据"""
+        if not session_id:
+            self._json_response({"error": "missing id"}, 400)
+            return
+        trash = D.load_trash()
+        idx = next((i for i, s in enumerate(trash.get("sessions", [])) if s.get("id") == session_id), None)
+        if idx is None:
+            self._json_response({"error": "not found"}, 404)
+            return
+        session = trash["sessions"].pop(idx)
+        data = D.load_data()
+        data["sessions"].append(session)
+        # 按开机时间排序
+        data["sessions"].sort(key=lambda s: s.get("bootTime", ""))
+        # 重新统计
+        data["bootCount"] = len(data["sessions"])
+        data["shutdownCount"] = len([s for s in data["sessions"] if s.get("shutdownTime")])
+        D.save_trash(trash)
+        D.save_data(data)
+        self._json_response({"ok": True})
+
+    def _add_session(self, req):
+        """手动添加一条开机记录"""
+        boot_time = req.get("bootTime")
+        shutdown_time = req.get("shutdownTime")
+        if not boot_time:
+            self._json_response({"error": "missing bootTime"}, 400)
+            return
+        data = D.load_data()
+        import uuid
+        session = {
+            "id": uuid.uuid4().hex[:14],
+            "bootTime": boot_time,
+            "shutdownTime": shutdown_time or None,
+            "duration": None,
+        }
+        if shutdown_time:
+            try:
+                from datetime import datetime
+                bt = datetime.fromisoformat(boot_time.replace("Z", "+00:00"))
+                st = datetime.fromisoformat(shutdown_time.replace("Z", "+00:00"))
+                session["duration"] = int((st - bt).total_seconds() * 1000)
+            except Exception:
+                pass
+        data["sessions"].append(session)
+        data["sessions"].sort(key=lambda s: s.get("bootTime", ""))
+        data["bootCount"] = len(data["sessions"])
+        data["shutdownCount"] = len([s for s in data["sessions"] if s.get("shutdownTime")])
+        D.save_data(data)
+        self._json_response({"ok": True, "session": session})
 
     def _json_response(self, obj, code=200):
         self.send_response(code)

@@ -134,6 +134,14 @@
       <button class="btn-close" onclick="toggleAdmin()">&#x2715;</button>
     </div>
 
+    <!-- 标签页导航 -->
+    <div class="admin-tabs">
+      <button class="admin-tab active" onclick="switchAdminTab('records', this)">&#x1F4CB; 记录管理</button>
+      <button class="admin-tab" onclick="switchAdminTab('trash', this)">&#x1F5D1; 回收站</button>
+      <button class="admin-tab" onclick="switchAdminTab('add', this)">&#x2795; 添加记录</button>
+    </div>
+
+    <!-- 统计卡片（所有标签页共享） -->
     <div class="stats-grid">
       <div class="stat-card">
         <div class="num" id="statBoots">0</div>
@@ -153,26 +161,69 @@
       </div>
     </div>
 
-    <div class="admin-actions">
-      <button class="btn-sm success" onclick="exportCSV()">&#x1F4E5; 导出 CSV</button>
-      <button class="btn-sm danger" onclick="clearAll()">&#x1F5D1; 清空全部</button>
+    <!-- 标签页：记录管理 -->
+    <div class="admin-tab-content active" id="tabRecords">
+      <div class="admin-actions">
+        <button class="btn-sm success" onclick="exportCSV()">&#x1F4E5; 导出 CSV</button>
+        <button class="btn-sm danger" onclick="clearAll()">&#x1F5D1; 清空全部</button>
+      </div>
+
+      <div class="admin-table-wrap">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>开机时间</th>
+              <th>关机时间</th>
+              <th>会话时长</th>
+              <th>状态</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="adminRecordsBody"></tbody>
+        </table>
+        <div class="admin-empty" id="adminEmptyMsg">暂无记录</div>
+      </div>
     </div>
 
-    <div class="admin-table-wrap">
-      <table class="admin-table">
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>开机时间</th>
-            <th>关机时间</th>
-            <th>会话时长</th>
-            <th>状态</th>
-            <th>操作</th>
-          </tr>
-        </thead>
-        <tbody id="adminRecordsBody"></tbody>
-      </table>
-      <div class="admin-empty" id="adminEmptyMsg">暂无记录</div>
+    <!-- 标签页：回收站 -->
+    <div class="admin-tab-content" id="tabTrash">
+      <div class="admin-actions">
+        <button class="btn-sm danger" onclick="clearTrash()">&#x1F5D1; 清空回收站</button>
+      </div>
+      <div class="admin-table-wrap">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>开机时间</th>
+              <th>关机时间</th>
+              <th>会话时长</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="trashRecordsBody"></tbody>
+        </table>
+        <div class="admin-empty" id="trashEmptyMsg">回收站为空</div>
+      </div>
+    </div>
+
+    <!-- 标签页：添加记录 -->
+    <div class="admin-tab-content" id="tabAdd">
+      <div class="add-form">
+        <div class="form-group">
+          <label>开机时间 <span class="form-required">*</span></label>
+          <input type="datetime-local" id="addBootTime" class="form-input">
+        </div>
+        <div class="form-group">
+          <label>关机时间 <span class="form-hint">（可选，留空表示未关机）</span></label>
+          <input type="datetime-local" id="addShutdownTime" class="form-input">
+        </div>
+        <div class="form-actions">
+          <button class="btn-sm success" onclick="addRecord()">&#x2714; 添加记录</button>
+        </div>
+        <div class="form-msg" id="addFormMsg"></div>
+      </div>
     </div>
   </div>
 </div>

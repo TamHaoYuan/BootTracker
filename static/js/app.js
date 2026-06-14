@@ -282,7 +282,21 @@ function refreshMainTable() {
 function toggleAdmin() {
   const overlay = document.getElementById('adminOverlay');
   overlay.classList.toggle('active');
-  if (overlay.classList.contains('active')) refreshAdmin();
+  if (overlay.classList.contains('active')) {
+    refreshAdmin();
+    refreshTrash();
+  }
+}
+
+function switchAdminTab(tab, btn) {
+  // 切换标签高亮
+  document.querySelectorAll('.admin-tab').forEach(function(t) { t.classList.remove('active'); });
+  btn.classList.add('active');
+  // 切换内容
+  document.querySelectorAll('.admin-tab-content').forEach(function(c) { c.classList.remove('active'); });
+  document.getElementById('tab' + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.add('active');
+  // 切换到回收站时刷新
+  if (tab === 'trash') refreshTrash();
 }
 
 function refreshAdmin() {
@@ -331,25 +345,46 @@ function refreshAdmin() {
 }
 
 function adminDeleteRecord(id) {
-  if (!confirm('确定删除这条记录？')) return;
+  if (!confirm('确定删除这条记录？将移入回收站，可恢复。')) return;
   var data = loadData();
   var idx = data.sessions.findIndex(function(s) { return s.id === id; });
   if (idx === -1) return;
 
-  var session = data.sessions[idx];
+  var session = data.sessions.splice(idx, 1)[0];
+
   if (session.shutdownTime) {
     data.shutdownCount = Math.max(0, (data.shutdownCount || 0) - 1);
   }
   data.bootCount = Math.max(0, (data.bootCount || 0) - 1);
-  data.sessions.splice(idx, 1);
 
   if (session.id === sessionStorage.getItem('currentSessionId')) {
     sessionStorage.removeItem('currentSessionId');
   }
 
+  // 保存到回收站
+  var trashRaw = localStorage.getItem('bootTrackerTrash');
+  var trash = trashRaw ? JSON.parse(trashRaw) : { sessions: [] };
+  trash.sessions.push(session);
+  localStorage.setItem('bootTrackerTrash', JSON.stringify(trash));
+
+  // 如果有服务器，同步回收站到文件
+  if (_isServerAvailable() && window._serverReady) {
+    fetch(_serverUrl('/api/data'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    }).catch(function() {});
+    // 同时同步回收站到服务端
+    fetch(_serverUrl('/api/trash'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(trash)
+    }).catch(function() {});
+  }
+
   // 更新缓存后刷新 UI，不重新调用 initBoot（避免创建新会话）
   window._bootDataCache = data;
-  saveData(data);
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch(e) {}
   updateMainUI(data, data.sessions.find(function(s) { return !s.shutdownTime; }) || data.sessions[data.sessions.length - 1]);
   refreshAdmin();
   refreshMainTable();
@@ -385,6 +420,204 @@ function clearAll() {
     refreshChart();
     renderHeatmap();
     _doInitBoot(empty);
+  }
+}
+
+// ——— 回收站 ———
+function refreshTrash() {
+  var trashRaw = localStorage.getItem('bootTrackerTrash');
+  var trash = trashRaw ? JSON.parse(trashRaw) : { sessions: [] };
+
+  // 如果有服务器，尝试从服务器加载更完整的回收站数据
+  if (_isServerAvailable() && window._serverReady) {
+    fetch(_serverUrl('/api/trash'))
+      .then(function(r) { return r.json(); })
+      .then(function(serverTrash) {
+        if (serverTrash && serverTrash.sessions) {
+          trash = serverTrash;
+          localStorage.setItem('bootTrackerTrash', JSON.stringify(trash));
+        }
+        _renderTrashTable(trash);
+      })
+      .catch(function() {
+        _renderTrashTable(trash);
+      });
+  } else {
+    _renderTrashTable(trash);
+  }
+}
+
+function _renderTrashTable(trash) {
+  var tbody = document.getElementById('trashRecordsBody');
+  var empty = document.getElementById('trashEmptyMsg');
+  var sorted = [].concat(trash.sessions || []).reverse();
+
+  if (sorted.length === 0) {
+    tbody.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+  tbody.innerHTML = sorted.map(function(s, i) {
+    var idx = (trash.sessions || []).length - i;
+    var isActive = !s.shutdownTime;
+    return '<tr>' +
+      '<td>' + idx + '</td>' +
+      '<td>' + fmtFullTime(s.bootTime) + '</td>' +
+      '<td>' + (isActive ? '—' : fmtFullTime(s.shutdownTime)) + '</td>' +
+      '<td>' + (isActive ? '—' : fmtDuration(s.duration)) + '</td>' +
+      '<td><button class="btn-restore" data-id="' + s.id + '">恢复</button></td>' +
+    '</tr>';
+  }).join('');
+}
+
+function trashRestore(id) {
+  if (!confirm('确定恢复这条记录？')) return;
+  if (_isServerAvailable() && window._serverReady) {
+    fetch(_serverUrl('/api/trash/restore'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: id })
+    }).then(function(r) { return r.json(); })
+      .then(function(res) {
+        if (res.ok) {
+          // 从本地回收站移除
+          var trashRaw = localStorage.getItem('bootTrackerTrash');
+          var trash = trashRaw ? JSON.parse(trashRaw) : { sessions: [] };
+          trash.sessions = trash.sessions.filter(function(s) { return s.id !== id; });
+          localStorage.setItem('bootTrackerTrash', JSON.stringify(trash));
+          // 重新加载主数据
+          loadDataAsync(function(data) {
+            window._bootDataCache = data;
+            updateMainUI(data, data.sessions.find(function(s) { return !s.shutdownTime; }) || null);
+            refreshAdmin();
+            refreshMainTable();
+            refreshChart();
+            renderHeatmap();
+            refreshTrash();
+          });
+        }
+      }).catch(function() { alert('恢复失败，请重试'); });
+  } else {
+    // 纯浏览器模式恢复
+    var trashRaw = localStorage.getItem('bootTrackerTrash');
+    var trash = trashRaw ? JSON.parse(trashRaw) : { sessions: [] };
+    var idx = trash.sessions.findIndex(function(s) { return s.id === id; });
+    if (idx === -1) return;
+    var session = trash.sessions.splice(idx, 1)[0];
+    localStorage.setItem('bootTrackerTrash', JSON.stringify(trash));
+
+    var data = loadData();
+    data.sessions.push(session);
+    data.sessions.sort(function(a, b) { return (a.bootTime || '').localeCompare(b.bootTime || ''); });
+    data.bootCount = data.sessions.length;
+    data.shutdownCount = data.sessions.filter(function(s) { return s.shutdownTime; }).length;
+    saveData(data);
+
+    updateMainUI(data, data.sessions.find(function(s) { return !s.shutdownTime; }) || null);
+    refreshAdmin();
+    refreshMainTable();
+    refreshChart();
+    renderHeatmap();
+    refreshTrash();
+  }
+}
+
+function clearTrash() {
+  if (!confirm('确定清空回收站？此操作不可撤销！')) return;
+  localStorage.removeItem('bootTrackerTrash');
+  if (_isServerAvailable() && window._serverReady) {
+    fetch(_serverUrl('/api/trash/clear'), { method: 'POST' }).catch(function() {});
+  }
+  refreshTrash();
+}
+
+// 回收站表格事件委托
+document.getElementById('trashRecordsBody').addEventListener('click', function(e) {
+  var btn = e.target.closest('.btn-restore');
+  if (!btn) return;
+  var id = btn.getAttribute('data-id');
+  if (id) trashRestore(id);
+});
+
+// ——— 添加记录 ———
+function addRecord() {
+  var bootInput = document.getElementById('addBootTime');
+  var shutInput = document.getElementById('addShutdownTime');
+  var msg = document.getElementById('addFormMsg');
+
+  if (!bootInput.value) {
+    msg.textContent = '请填写开机时间';
+    msg.className = 'form-msg error';
+    return;
+  }
+
+  var bootTime = new Date(bootInput.value).toISOString();
+  var shutdownTime = shutInput.value ? new Date(shutInput.value).toISOString() : null;
+
+  // 校验：关机时间不能早于开机时间
+  if (shutdownTime && shutdownTime <= bootTime) {
+    msg.textContent = '关机时间不能早于或等于开机时间';
+    msg.className = 'form-msg error';
+    return;
+  }
+
+  if (_isServerAvailable() && window._serverReady) {
+    fetch(_serverUrl('/api/add-session'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ bootTime: bootTime, shutdownTime: shutdownTime })
+    }).then(function(r) { return r.json(); })
+      .then(function(res) {
+        if (res.ok) {
+          msg.textContent = '记录已添加';
+          msg.className = 'form-msg success';
+          bootInput.value = '';
+          shutInput.value = '';
+          // 重新加载数据并刷新
+          loadDataAsync(function(data) {
+            window._bootDataCache = data;
+            updateMainUI(data, data.sessions.find(function(s) { return !s.shutdownTime; }) || null);
+            refreshAdmin();
+            refreshMainTable();
+            refreshChart();
+            renderHeatmap();
+          });
+          setTimeout(function() { msg.textContent = ''; }, 2000);
+        } else {
+          msg.textContent = res.error || '添加失败';
+          msg.className = 'form-msg error';
+        }
+      }).catch(function() { msg.textContent = '网络错误，请重试'; msg.className = 'form-msg error'; });
+  } else {
+    // 纯浏览器模式
+    var data = loadData();
+    var session = {
+      id: genId(),
+      bootTime: bootTime,
+      shutdownTime: shutdownTime,
+      duration: null
+    };
+    if (shutdownTime) {
+      session.duration = new Date(shutdownTime) - new Date(bootTime);
+    }
+    data.sessions.push(session);
+    data.sessions.sort(function(a, b) { return (a.bootTime || '').localeCompare(b.bootTime || ''); });
+    data.bootCount = data.sessions.length;
+    data.shutdownCount = data.sessions.filter(function(s) { return s.shutdownTime; }).length;
+    saveData(data);
+
+    msg.textContent = '记录已添加';
+    msg.className = 'form-msg success';
+    bootInput.value = '';
+    shutInput.value = '';
+
+    updateMainUI(data, data.sessions.find(function(s) { return !s.shutdownTime; }) || null);
+    refreshAdmin();
+    refreshMainTable();
+    refreshChart();
+    renderHeatmap();
+    setTimeout(function() { msg.textContent = ''; }, 2000);
   }
 }
 
