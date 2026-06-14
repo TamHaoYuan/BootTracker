@@ -1,7 +1,19 @@
 {
-  "bootCount": 3,
-  "shutdownCount": 2,
+  "bootCount": 4,
+  "shutdownCount": 3,
   "sessions": [
+    {
+      "id": "a3d493bc33984d",
+      "bootTime": "2026-06-13T08:06:00.000Z",
+      "shutdownTime": "2026-06-13T08:15:00.000Z",
+      "duration": 540000
+    },
+    {
+      "id": "3948750257d441",
+      "bootTime": "2026-06-13T13:43:00.000Z",
+      "shutdownTime": "2026-06-13T14:33:00.000Z",
+      "duration": 3000000
+    },
     {
       "id": "495dde1d3a3d4a",
       "bootTime": "2026-06-14T02:01:56.601948Z",
@@ -9,14 +21,8 @@
       "duration": 66530
     },
     {
-      "id": "7bce305d810542",
-      "bootTime": "2026-06-14T02:03:03.132629Z",
-      "shutdownTime": "2026-06-14T02:12:37.461125Z",
-      "duration": 574328
-    },
-    {
-      "id": "d5ade33ed24c42",
-      "bootTime": "2026-06-14T02:12:37.461125Z",
+      "id": "ee6fca292f6b44",
+      "bootTime": "2026-06-14T02:23:40.005436Z",
       "shutdownTime": null,
       "duration": null
     }
