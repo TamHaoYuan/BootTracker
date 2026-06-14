@@ -22,16 +22,8 @@
   </div>
 </nav>
 
-<!-- 主题切换器 -->
-<div class="theme-switcher" id="themeSwitcher">
-  <button class="theme-dot purple active" data-theme="purple" onclick="switchTheme('purple')" title="紫色"></button>
-  <button class="theme-dot blue" data-theme="blue" onclick="switchTheme('blue')" title="蓝色"></button>
-  <button class="theme-dot green" data-theme="green" onclick="switchTheme('green')" title="绿色"></button>
-  <button class="theme-dot orange" data-theme="orange" onclick="switchTheme('orange')" title="橙色"></button>
-  <button class="theme-dot gray" data-theme="gray" onclick="switchTheme('gray')" title="灰色"></button>
-  <button class="theme-dot mica" data-theme="mica" onclick="switchTheme('mica')" title="云母"></button>
-  <button class="theme-dot material-you" data-theme="material-you" onclick="switchTheme('material-you')" title="Material You"></button>
-</div>
+<!-- 主题设置按钮 -->
+<button class="theme-fab" id="themeFab" onclick="toggleThemePanel()" title="主题设置">&#x1F3A8;</button>
 
 <div class="container">
 
@@ -125,6 +117,92 @@
     <div class="heatmap-container" id="heatmapContainer"></div>
   </div>
 
+</div>
+
+<!-- Theme Panel -->
+<div class="theme-overlay" id="themeOverlay">
+  <div class="theme-panel">
+    <div class="theme-panel-header">
+      <h2>&#x1F3A8; 主题设置</h2>
+      <button class="btn-close" onclick="toggleThemePanel()">&#x2715;</button>
+    </div>
+    <div class="theme-mode-row">
+      <button class="btn-sm" id="themeModeDark" onclick="setMode('dark')">&#x263E; 暗色</button>
+      <button class="btn-sm" id="themeModeLight" onclick="setMode('light')">&#x2600; 浅色</button>
+    </div>
+    <div class="theme-grid">
+      <div class="theme-card" data-theme="purple" onclick="pickTheme('purple')">
+        <div class="theme-preview" style="background:linear-gradient(135deg,#0a0c14,#1e1b4b);">
+          <div class="tp-accent" style="background:linear-gradient(135deg,#8b5cf6,#d946ef);"></div>
+          <div class="tp-bar" style="background:rgba(139,92,246,0.25);"></div>
+          <div class="tp-bar short" style="background:rgba(139,92,246,0.15);"></div>
+          <div class="tp-bar" style="background:rgba(139,92,246,0.1);"></div>
+        </div>
+        <div class="theme-card-label">紫色</div>
+        <div class="theme-card-check"></div>
+      </div>
+      <div class="theme-card" data-theme="blue" onclick="pickTheme('blue')">
+        <div class="theme-preview" style="background:linear-gradient(135deg,#0a0c14,#0c1929);">
+          <div class="tp-accent" style="background:linear-gradient(135deg,#3b82f6,#06b6d4);"></div>
+          <div class="tp-bar" style="background:rgba(59,130,246,0.25);"></div>
+          <div class="tp-bar short" style="background:rgba(59,130,246,0.15);"></div>
+          <div class="tp-bar" style="background:rgba(59,130,246,0.1);"></div>
+        </div>
+        <div class="theme-card-label">蓝色</div>
+        <div class="theme-card-check"></div>
+      </div>
+      <div class="theme-card" data-theme="green" onclick="pickTheme('green')">
+        <div class="theme-preview" style="background:linear-gradient(135deg,#0a0c14,#022c22);">
+          <div class="tp-accent" style="background:linear-gradient(135deg,#10b981,#34d399);"></div>
+          <div class="tp-bar" style="background:rgba(16,185,129,0.25);"></div>
+          <div class="tp-bar short" style="background:rgba(16,185,129,0.15);"></div>
+          <div class="tp-bar" style="background:rgba(16,185,129,0.1);"></div>
+        </div>
+        <div class="theme-card-label">绿色</div>
+        <div class="theme-card-check"></div>
+      </div>
+      <div class="theme-card" data-theme="orange" onclick="pickTheme('orange')">
+        <div class="theme-preview" style="background:linear-gradient(135deg,#0a0c14,#1c1008);">
+          <div class="tp-accent" style="background:linear-gradient(135deg,#f97316,#f59e0b);"></div>
+          <div class="tp-bar" style="background:rgba(249,115,22,0.25);"></div>
+          <div class="tp-bar short" style="background:rgba(249,115,22,0.15);"></div>
+          <div class="tp-bar" style="background:rgba(249,115,22,0.1);"></div>
+        </div>
+        <div class="theme-card-label">橙色</div>
+        <div class="theme-card-check"></div>
+      </div>
+      <div class="theme-card" data-theme="gray" onclick="pickTheme('gray')">
+        <div class="theme-preview" style="background:linear-gradient(135deg,#0a0c14,#111827);">
+          <div class="tp-accent" style="background:linear-gradient(135deg,#64748b,#94a3b8);"></div>
+          <div class="tp-bar" style="background:rgba(100,116,139,0.25);"></div>
+          <div class="tp-bar short" style="background:rgba(100,116,139,0.15);"></div>
+          <div class="tp-bar" style="background:rgba(100,116,139,0.1);"></div>
+        </div>
+        <div class="theme-card-label">灰色</div>
+        <div class="theme-card-check"></div>
+      </div>
+      <div class="theme-card" data-theme="mica" onclick="pickTheme('mica')">
+        <div class="theme-preview" style="background:#1a1a1a;">
+          <div class="tp-accent" style="background:linear-gradient(135deg,#64748b,#e2e8f0);"></div>
+          <div class="tp-bar" style="background:rgba(255,255,255,0.06);"></div>
+          <div class="tp-bar short" style="background:rgba(255,255,255,0.04);"></div>
+          <div class="tp-bar" style="background:rgba(255,255,255,0.03);"></div>
+        </div>
+        <div class="theme-card-label">云母</div>
+        <div class="theme-card-check"></div>
+      </div>
+      <div class="theme-card" data-theme="material-you" onclick="pickTheme('material-you')">
+        <div class="theme-preview" style="background:linear-gradient(135deg,#141218,#1d192b);">
+          <div class="tp-accent" style="background:linear-gradient(135deg,#6750a4,#d0bcff);"></div>
+          <div class="tp-bar" style="background:rgba(208,188,255,0.15);"></div>
+          <div class="tp-bar short" style="background:rgba(208,188,255,0.1);"></div>
+          <div class="tp-bar" style="background:rgba(208,188,255,0.06);"></div>
+        </div>
+        <div class="theme-card-label">Material You</div>
+        <div class="theme-card-check"></div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- Admin Overlay -->

@@ -1,6 +1,6 @@
 {
-  "bootCount": 4,
-  "shutdownCount": 3,
+  "bootCount": 5,
+  "shutdownCount": 4,
   "sessions": [
     {
       "id": "a3d493bc33984d",
@@ -23,6 +23,12 @@
     {
       "id": "ee6fca292f6b44",
       "bootTime": "2026-06-14T02:23:40.005436Z",
+      "shutdownTime": "2026-06-14T02:30:08.905093Z",
+      "duration": 388899
+    },
+    {
+      "id": "6a0e7717c7f74c",
+      "bootTime": "2026-06-14T02:30:08.905093Z",
       "shutdownTime": null,
       "duration": null
     }

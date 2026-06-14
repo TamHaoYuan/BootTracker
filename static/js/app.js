@@ -750,17 +750,58 @@ function switchTheme(name) {
   document.documentElement.setAttribute('data-theme', name);
   localStorage.setItem('bootTrackerTheme', name);
   // 更新激活状态
-  document.querySelectorAll('.theme-dot').forEach(function(d) {
-    d.classList.toggle('active', d.getAttribute('data-theme') === name);
+  document.querySelectorAll('.theme-card').forEach(function(c) {
+    c.classList.toggle('active', c.getAttribute('data-theme') === name);
   });
+  // 更新模式按钮
+  updateModeButtons();
   // 刷新图表
   refreshChart();
 }
+
 // 加载保存的主题
 (function() {
   var saved = localStorage.getItem('bootTrackerTheme') || 'mica';
   switchTheme(saved);
 })();
+
+// ——— 主题面板 ———
+function toggleThemePanel() {
+  var overlay = document.getElementById('themeOverlay');
+  overlay.classList.toggle('active');
+}
+
+function pickTheme(name) {
+  switchTheme(name);
+}
+
+function setMode(mode) {
+  if (mode === 'light') {
+    document.body.classList.add('light-mode');
+    document.getElementById('modeToggle').textContent = '\u263E';
+    document.getElementById('modeToggle').title = '切换暗色模式';
+  } else {
+    document.body.classList.remove('light-mode');
+    document.getElementById('modeToggle').textContent = '\u2600';
+    document.getElementById('modeToggle').title = '切换浅色模式';
+  }
+  localStorage.setItem('bootTrackerMode', mode);
+  updateModeButtons();
+  refreshChart();
+}
+
+function updateModeButtons() {
+  var isLight = document.body.classList.contains('light-mode');
+  var dark = document.getElementById('themeModeDark');
+  var light = document.getElementById('themeModeLight');
+  if (dark && light) {
+    dark.classList.toggle('active', !isLight);
+    light.classList.toggle('active', isLight);
+  }
+}
+
+// 初始化模式按钮状态
+(function() { updateModeButtons(); })();
 
 // ——— 快捷键（备用） ———
 document.addEventListener('keydown', function(e) {
