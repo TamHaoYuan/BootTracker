@@ -1,28 +1,33 @@
 @echo off
-rem 开机时间记录 - 桌面应用启动脚本
-rem 将此 .bat 文件（或快捷方式）放入 shell:startup 文件夹即可开机自启
+chcp 65001 >nul
+rem BootTracker launcher - double-click: open window if running, or start app
+rem Saved as ANSI/GBK compatible (no Chinese in commands)
 
-set SCRIPT_DIR=%~dp0
-set LAUNCHER=%SCRIPT_DIR%boot-tracker.py
+set "SCRIPT_DIR=%~dp0"
+set "LAUNCHER=%SCRIPT_DIR%boot-tracker.py"
 
 if not exist "%LAUNCHER%" (
-    echo [错误] 找不到 boot-tracker.py，请确认文件完整
+    echo [ERROR] boot-tracker.py not found in: %SCRIPT_DIR%
     pause
     exit /b 1
 )
 
-rem 优先使用 pythonw（无控制台窗口），回退到 python
+rem Try pythonw first (no console window), fall back to python
 where pythonw >nul 2>&1
 if %errorlevel%==0 (
     start "" pythonw "%LAUNCHER%"
-) else (
-    rem 尝试常见安装路径
-    if exist "C:\Python313\pythonw.exe" (
-        start "" "C:\Python313\pythonw.exe" "%LAUNCHER%"
-    ) else if exist "C:\Python312\pythonw.exe" (
-        start "" "C:\Python312\pythonw.exe" "%LAUNCHER%"
-    ) else (
-        rem 最终回退：使用 python（会闪一下控制台）
-        python "%LAUNCHER%"
-    )
+    exit /b 0
 )
+
+rem Try common install paths
+if exist "C:\Python313\pythonw.exe" (
+    start "" "C:\Python313\pythonw.exe" "%LAUNCHER%"
+    exit /b 0
+)
+if exist "C:\Python312\pythonw.exe" (
+    start "" "C:\Python312\pythonw.exe" "%LAUNCHER%"
+    exit /b 0
+)
+
+rem Final fallback: python (console flashes)
+python "%LAUNCHER%"

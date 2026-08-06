@@ -4,12 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>开机时间记录</title>
+<link rel="stylesheet" href="static/css/utils.css">
 <link rel="stylesheet" href="static/css/style.css">
 </head>
 <body>
 
 <!-- 暗色/浅色切换 -->
-<button class="mode-toggle" id="modeToggle" onclick="toggleMode()" title="切换浅色模式">&#x2600;</button>
+<button class="mode-toggle" id="modeToggle" onclick="toggleMode()" title="切换浅色模式">
+  <svg class="icon" viewBox="0 0 24 24"><use href="static/icons/icons.svg#icon-sun"/></svg>
+</button>
 
 <!-- 顶部导航栏 -->
 <nav class="navbar">
@@ -22,13 +25,16 @@
   </div>
 </nav>
 
-<!-- 主题设置按钮 -->
-<button class="theme-fab" id="themeFab" onclick="toggleThemePanel()" title="主题设置">&#x1F3A8;</button>
+<!-- 设置按钮 -->
+<button class="theme-fab" id="themeFab" onclick="toggleSettingsPanel()" title="设置">
+  <svg class="icon" viewBox="0 0 24 24"><use href="static/icons/icons.svg#icon-settings"/></svg>
+</button>
 
 <div class="container">
 
   <div class="stat-number anim-d1" id="bootCount">&mdash;</div>
-  <div class="stat-label anim-d1">次开机</div>
+  <div class="stat-label anim-d1">今日开机</div>
+  <div class="stat-sublabel anim-d1" id="totalCountLabel">累计 <span id="totalCount">0</span> 次</div>
 
   <div class="current-session anim-d1">
     <div class="label">本次开机时间</div>
@@ -52,156 +58,453 @@
     已关机 <span id="shutdownCount">0</span> 次
   </div>
 
-  <div class="export-btns anim-d5">
-    <button class="btn-export" onclick="exportCSV()">&#x1F4C4; 导出 CSV</button>
-    <button class="btn-export" onclick="exportJSON()">&#x1F4CB; 导出 JSON</button>
-    <button class="btn-export" onclick="exportXLSX()">&#x1F4CA; 导出 XLSX</button>
+  <!-- 页面切换 Tab -->
+  <div class="main-tabs anim-d5">
+    <button class="main-tab active" id="tabRecords" onclick="switchMainTab('records')">
+      <svg class="icon" viewBox="0 0 24 24"><use href="static/icons/icons.svg#icon-file-text"/></svg> 记录
+    </button>
+    <button class="main-tab" id="tabChart" onclick="switchMainTab('chart')">
+      <svg class="icon" viewBox="0 0 24 24"><use href="static/icons/icons.svg#icon-chart-bar"/></svg> 图表
+    </button>
   </div>
 
-  <!-- 主界面记录表格 -->
-  <div class="records-section anim-d6">
-    <div class="section-header">
-      <h3>&#x1F4CB; 开机记录</h3>
-      <div class="filter-bar">
-        <label>从 <input type="date" id="filterFrom" onchange="refreshMainTable()"></label>
-        <label>至 <input type="date" id="filterTo" onchange="refreshMainTable()"></label>
-        <button class="btn-sm" onclick="clearFilter()" style="margin-left:6px;">清除筛选</button>
-      </div>
+  <!-- 记录页 -->
+  <div class="page active" id="pageRecords">
+    <div class="export-btns anim-d5">
+      <button class="btn-export" onclick="exportCSV()">
+        <svg class="icon" viewBox="0 0 24 24"><use href="static/icons/icons.svg#icon-download"/></svg> 导出 CSV
+      </button>
+      <button class="btn-export" onclick="exportJSON()">
+        <svg class="icon" viewBox="0 0 24 24"><use href="static/icons/icons.svg#icon-file-text"/></svg> 导出 JSON
+      </button>
+      <button class="btn-export" onclick="exportXLSX()">
+        <svg class="icon" viewBox="0 0 24 24"><use href="static/icons/icons.svg#icon-chart-bar"/></svg> 导出 XLSX
+      </button>
     </div>
-    <div class="records-table-wrap">
-      <table class="records-table">
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>开机时间</th>
-            <th>关机时间</th>
-            <th>会话时长</th>
-            <th>状态</th>
-          </tr>
-        </thead>
-        <tbody id="mainRecordsBody"></tbody>
-      </table>
-      <div class="records-empty" id="mainEmptyMsg">暂无记录</div>
+
+    <!-- 主界面记录表格 -->
+    <div class="records-section anim-d6">
+      <div class="section-header">
+        <h3>
+          <svg class="icon" viewBox="0 0 24 24"><use href="static/icons/icons.svg#icon-file-text"/></svg> 开机记录
+        </h3>
+        <div class="filter-bar">
+          <label>从 <input type="date" id="filterFrom" onchange="refreshMainTable()"></label>
+          <label>至 <input type="date" id="filterTo" onchange="refreshMainTable()"></label>
+          <button class="btn-sm" onclick="clearFilter()" style="margin-left:6px;">清除筛选</button>
+        </div>
+      </div>
+      <div class="records-table-wrap">
+        <table class="records-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>开机时间</th>
+              <th>关机时间</th>
+              <th>会话时长</th>
+              <th>状态</th>
+            </tr>
+          </thead>
+          <tbody id="mainRecordsBody"></tbody>
+        </table>
+        <div class="records-empty" id="mainEmptyMsg">暂无记录</div>
+      </div>
     </div>
   </div>
 
-  <!-- 图表统计区域 -->
-  <div class="chart-section" style="animation: fadeInUp 0.6s 0.9s ease both;">
-    <div class="section-header">
-      <h3>&#x1F4CA; 开机时长趋势</h3>
-      <div class="chart-tabs">
-        <button class="chart-tab" onclick="switchChart('bar')">柱状图</button>
-        <button class="chart-tab active" onclick="switchChart('line')">折线图</button>
+  <!-- 图表页 -->
+  <div class="page" id="pageChart">
+    <!-- 图表统计区域 -->
+    <div class="chart-section" style="animation: fadeInUp 0.6s 0.9s ease both;">
+      <div class="section-header">
+        <h3>
+          <svg class="icon" viewBox="0 0 24 24"><use href="static/icons/icons.svg#icon-chart-bar"/></svg> 开机时长趋势
+        </h3>
+        <div class="chart-tabs">
+          <button class="chart-tab" onclick="switchChart('bar')">柱状图</button>
+          <button class="chart-tab active" onclick="switchChart('line')">折线图</button>
+          <button class="chart-tab" onclick="switchChart('pie')">饼图</button>
+        </div>
+      </div>
+      <div class="chart-container" id="chartWrapper">
+        <svg id="chartSVG" viewBox="0 0 800 300" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%;"></svg>
       </div>
     </div>
-    <div class="chart-container" id="chartWrapper">
-      <svg id="chartSVG" viewBox="0 0 800 300" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%;"></svg>
+
+    <!-- 热度图区域 -->
+    <div class="heatmap-section" style="animation: fadeInUp 0.6s 1s ease both;">
+      <div class="section-header">
+        <h3>
+          <svg class="icon" viewBox="0 0 24 24"><use href="static/icons/icons.svg#icon-chart-line"/></svg> 开机热度图
+        </h3>
+        <div class="heatmap-legend">
+          <span class="hm-label">少</span>
+          <span class="hm-cell" style="background:rgba(30,41,59,0.5);"></span>
+          <span class="hm-cell" id="hmLegend1"></span>
+          <span class="hm-cell" id="hmLegend2"></span>
+          <span class="hm-cell" id="hmLegend3"></span>
+          <span class="hm-cell" id="hmLegend4"></span>
+          <span class="hm-label">多</span>
+        </div>
+      </div>
+      <div class="heatmap-container" id="heatmapContainer"></div>
     </div>
   </div>
+
 </div>
 
-  <!-- 热度图区域 -->
-  <div class="heatmap-section" style="animation: fadeInUp 0.6s 1s ease both;">
-    <div class="section-header">
-      <h3>&#x1F525; 开机热度图</h3>
-      <div class="heatmap-legend">
-        <span class="hm-label">少</span>
-        <span class="hm-cell" style="background:rgba(30,41,59,0.5);"></span>
-        <span class="hm-cell" style="background:rgba(88,28,135,0.7);"></span>
-        <span class="hm-cell" style="background:rgba(124,58,237,0.75);"></span>
-        <span class="hm-cell" style="background:rgba(139,92,246,0.85);"></span>
-        <span class="hm-cell" style="background:rgba(167,139,250,0.95);"></span>
-        <span class="hm-label">多</span>
-      </div>
-    </div>
-    <div class="heatmap-container" id="heatmapContainer"></div>
-  </div>
+<!-- Footer -->
+<footer class="app-footer">
+  <span class="footer-version" id="footerVersion">v1.0.0</span>
+</footer>
 
-</div>
-
-<!-- Theme Panel -->
-<div class="theme-overlay" id="themeOverlay">
-  <div class="theme-panel">
+<!-- Settings Overlay -->
+<div class="settings-overlay" id="settingsOverlay">
+  <div class="settings-panel">
     <div class="theme-panel-header">
-      <h2>&#x1F3A8; 主题设置</h2>
-      <button class="btn-close" onclick="toggleThemePanel()">&#x2715;</button>
+      <h2>
+        <svg class="icon" viewBox="0 0 24 24"><use href="static/icons/icons.svg#icon-settings"/></svg> 设置
+      </h2>
+      <button class="btn-close" onclick="toggleSettingsPanel()">
+        <svg class="icon" viewBox="0 0 24 24"><use href="static/icons/icons.svg#icon-x"/></svg>
+      </button>
     </div>
-    <div class="theme-mode-row">
-      <button class="btn-sm" id="themeModeDark" onclick="setMode('dark')">&#x263E; 暗色</button>
-      <button class="btn-sm" id="themeModeLight" onclick="setMode('light')">&#x2600; 浅色</button>
+
+    <!-- 标签页导航 -->
+    <div class="settings-tabs">
+      <button class="settings-tab active" onclick="switchSettingsTab('appearance', this)">
+        <svg class="icon" viewBox="0 0 24 24"><use href="static/icons/icons.svg#icon-palette"/></svg> 外观
+      </button>
+      <button class="settings-tab" onclick="switchSettingsTab('general', this)">
+        <svg class="icon" viewBox="0 0 24 24"><use href="static/icons/icons.svg#icon-sliders"/></svg> 通用
+      </button>
+      <button class="settings-tab" onclick="switchSettingsTab('network', this)">
+        <svg class="icon" viewBox="0 0 24 24"><use href="static/icons/icons.svg#icon-globe"/></svg> 网络
+      </button>
+      <button class="settings-tab" onclick="switchSettingsTab('about', this)">
+        <svg class="icon" viewBox="0 0 24 24"><use href="static/icons/icons.svg#icon-info"/></svg> 关于
+      </button>
     </div>
-    <div class="theme-grid">
-      <div class="theme-card" data-theme="purple" onclick="pickTheme('purple')">
-        <div class="theme-preview" style="background:linear-gradient(135deg,#0a0c14,#1e1b4b);">
-          <div class="tp-accent" style="background:linear-gradient(135deg,#8b5cf6,#d946ef);"></div>
-          <div class="tp-bar" style="background:rgba(139,92,246,0.25);"></div>
-          <div class="tp-bar short" style="background:rgba(139,92,246,0.15);"></div>
-          <div class="tp-bar" style="background:rgba(139,92,246,0.1);"></div>
-        </div>
-        <div class="theme-card-label">紫色</div>
-        <div class="theme-card-check"></div>
+
+    <!-- 外观（主题 + 显示） -->
+    <div class="settings-page active" data-page="appearance">
+    <div class="settings-section">
+      <h3 class="settings-section-title">
+        <svg class="icon" viewBox="0 0 24 24"><use href="static/icons/icons.svg#icon-palette"/></svg> 主题
+      </h3>
+      <div class="theme-mode-row">
+        <button class="btn-sm" id="themeModeDark" onclick="setMode('dark')">
+          <svg class="icon" viewBox="0 0 24 24"><use href="static/icons/icons.svg#icon-moon"/></svg> 暗色
+        </button>
+        <button class="btn-sm" id="themeModeLight" onclick="setMode('light')">
+          <svg class="icon" viewBox="0 0 24 24"><use href="static/icons/icons.svg#icon-sun"/></svg> 浅色
+        </button>
       </div>
-      <div class="theme-card" data-theme="blue" onclick="pickTheme('blue')">
-        <div class="theme-preview" style="background:linear-gradient(135deg,#0a0c14,#0c1929);">
-          <div class="tp-accent" style="background:linear-gradient(135deg,#3b82f6,#06b6d4);"></div>
-          <div class="tp-bar" style="background:rgba(59,130,246,0.25);"></div>
-          <div class="tp-bar short" style="background:rgba(59,130,246,0.15);"></div>
-          <div class="tp-bar" style="background:rgba(59,130,246,0.1);"></div>
+      <div class="theme-grid">
+        <div class="theme-card" data-theme="purple" onclick="pickTheme('purple')">
+          <div class="theme-preview" style="background:linear-gradient(135deg,#0a0c14,#1e1b4b);">
+            <div class="tp-accent" style="background:linear-gradient(135deg,#8b5cf6,#d946ef);"></div>
+            <div class="tp-bar" style="background:rgba(139,92,246,0.25);"></div>
+            <div class="tp-bar short" style="background:rgba(139,92,246,0.15);"></div>
+            <div class="tp-bar" style="background:rgba(139,92,246,0.1);"></div>
+          </div>
+          <div class="theme-card-label">紫色</div>
+          <div class="theme-card-check"></div>
         </div>
-        <div class="theme-card-label">蓝色</div>
-        <div class="theme-card-check"></div>
-      </div>
-      <div class="theme-card" data-theme="green" onclick="pickTheme('green')">
-        <div class="theme-preview" style="background:linear-gradient(135deg,#0a0c14,#022c22);">
-          <div class="tp-accent" style="background:linear-gradient(135deg,#10b981,#34d399);"></div>
-          <div class="tp-bar" style="background:rgba(16,185,129,0.25);"></div>
-          <div class="tp-bar short" style="background:rgba(16,185,129,0.15);"></div>
-          <div class="tp-bar" style="background:rgba(16,185,129,0.1);"></div>
+        <div class="theme-card" data-theme="blue" onclick="pickTheme('blue')">
+          <div class="theme-preview" style="background:linear-gradient(135deg,#0a0c14,#0c1929);">
+            <div class="tp-accent" style="background:linear-gradient(135deg,#3b82f6,#06b6d4);"></div>
+            <div class="tp-bar" style="background:rgba(59,130,246,0.25);"></div>
+            <div class="tp-bar short" style="background:rgba(59,130,246,0.15);"></div>
+            <div class="tp-bar" style="background:rgba(59,130,246,0.1);"></div>
+          </div>
+          <div class="theme-card-label">蓝色</div>
+          <div class="theme-card-check"></div>
         </div>
-        <div class="theme-card-label">绿色</div>
-        <div class="theme-card-check"></div>
-      </div>
-      <div class="theme-card" data-theme="orange" onclick="pickTheme('orange')">
-        <div class="theme-preview" style="background:linear-gradient(135deg,#0a0c14,#1c1008);">
-          <div class="tp-accent" style="background:linear-gradient(135deg,#f97316,#f59e0b);"></div>
-          <div class="tp-bar" style="background:rgba(249,115,22,0.25);"></div>
-          <div class="tp-bar short" style="background:rgba(249,115,22,0.15);"></div>
-          <div class="tp-bar" style="background:rgba(249,115,22,0.1);"></div>
+        <div class="theme-card" data-theme="green" onclick="pickTheme('green')">
+          <div class="theme-preview" style="background:linear-gradient(135deg,#0a0c14,#022c22);">
+            <div class="tp-accent" style="background:linear-gradient(135deg,#10b981,#34d399);"></div>
+            <div class="tp-bar" style="background:rgba(16,185,129,0.25);"></div>
+            <div class="tp-bar short" style="background:rgba(16,185,129,0.15);"></div>
+            <div class="tp-bar" style="background:rgba(16,185,129,0.1);"></div>
+          </div>
+          <div class="theme-card-label">绿色</div>
+          <div class="theme-card-check"></div>
         </div>
-        <div class="theme-card-label">橙色</div>
-        <div class="theme-card-check"></div>
-      </div>
-      <div class="theme-card" data-theme="gray" onclick="pickTheme('gray')">
-        <div class="theme-preview" style="background:linear-gradient(135deg,#0a0c14,#111827);">
-          <div class="tp-accent" style="background:linear-gradient(135deg,#64748b,#94a3b8);"></div>
-          <div class="tp-bar" style="background:rgba(100,116,139,0.25);"></div>
-          <div class="tp-bar short" style="background:rgba(100,116,139,0.15);"></div>
-          <div class="tp-bar" style="background:rgba(100,116,139,0.1);"></div>
+        <div class="theme-card" data-theme="orange" onclick="pickTheme('orange')">
+          <div class="theme-preview" style="background:linear-gradient(135deg,#0a0c14,#1c1008);">
+            <div class="tp-accent" style="background:linear-gradient(135deg,#f97316,#f59e0b);"></div>
+            <div class="tp-bar" style="background:rgba(249,115,22,0.25);"></div>
+            <div class="tp-bar short" style="background:rgba(249,115,22,0.15);"></div>
+            <div class="tp-bar" style="background:rgba(249,115,22,0.1);"></div>
+          </div>
+          <div class="theme-card-label">橙色</div>
+          <div class="theme-card-check"></div>
         </div>
-        <div class="theme-card-label">灰色</div>
-        <div class="theme-card-check"></div>
-      </div>
-      <div class="theme-card" data-theme="mica" onclick="pickTheme('mica')">
-        <div class="theme-preview" style="background:#1a1a1a;">
-          <div class="tp-accent" style="background:linear-gradient(135deg,#64748b,#e2e8f0);"></div>
-          <div class="tp-bar" style="background:rgba(255,255,255,0.06);"></div>
-          <div class="tp-bar short" style="background:rgba(255,255,255,0.04);"></div>
-          <div class="tp-bar" style="background:rgba(255,255,255,0.03);"></div>
+        <div class="theme-card" data-theme="gray" onclick="pickTheme('gray')">
+          <div class="theme-preview" style="background:linear-gradient(135deg,#0a0c14,#111827);">
+            <div class="tp-accent" style="background:linear-gradient(135deg,#64748b,#94a3b8);"></div>
+            <div class="tp-bar" style="background:rgba(100,116,139,0.25);"></div>
+            <div class="tp-bar short" style="background:rgba(100,116,139,0.15);"></div>
+            <div class="tp-bar" style="background:rgba(100,116,139,0.1);"></div>
+          </div>
+          <div class="theme-card-label">灰色</div>
+          <div class="theme-card-check"></div>
         </div>
-        <div class="theme-card-label">云母</div>
-        <div class="theme-card-check"></div>
-      </div>
-      <div class="theme-card" data-theme="material-you" onclick="pickTheme('material-you')">
-        <div class="theme-preview" style="background:linear-gradient(135deg,#141218,#1d192b);">
-          <div class="tp-accent" style="background:linear-gradient(135deg,#6750a4,#d0bcff);"></div>
-          <div class="tp-bar" style="background:rgba(208,188,255,0.15);"></div>
-          <div class="tp-bar short" style="background:rgba(208,188,255,0.1);"></div>
-          <div class="tp-bar" style="background:rgba(208,188,255,0.06);"></div>
+        <div class="theme-card" data-theme="mica" onclick="pickTheme('mica')">
+          <div class="theme-preview" style="background:#1a1a1a;">
+            <div class="tp-accent" style="background:linear-gradient(135deg,#64748b,#e2e8f0);"></div>
+            <div class="tp-bar" style="background:rgba(255,255,255,0.06);"></div>
+            <div class="tp-bar short" style="background:rgba(255,255,255,0.04);"></div>
+            <div class="tp-bar" style="background:rgba(255,255,255,0.03);"></div>
+          </div>
+          <div class="theme-card-label">云母</div>
+          <div class="theme-card-check"></div>
         </div>
-        <div class="theme-card-label">Material You</div>
-        <div class="theme-card-check"></div>
+        <div class="theme-card" data-theme="material-you" onclick="pickTheme('material-you')">
+          <div class="theme-preview" style="background:linear-gradient(135deg,#141218,#1d192b);">
+            <div class="tp-accent" style="background:linear-gradient(135deg,#6750a4,#d0bcff);"></div>
+            <div class="tp-bar" style="background:rgba(208,188,255,0.15);"></div>
+            <div class="tp-bar short" style="background:rgba(208,188,255,0.1);"></div>
+            <div class="tp-bar" style="background:rgba(208,188,255,0.06);"></div>
+          </div>
+          <div class="theme-card-label">Material You</div>
+          <div class="theme-card-check"></div>
+        </div>
       </div>
     </div>
+
+    <!-- 显示设置 -->
+    <div class="settings-section">
+      <h3 class="settings-section-title">
+        <svg class="icon" viewBox="0 0 24 24"><use href="static/icons/icons.svg#icon-sliders"/></svg> 显示
+      </h3>
+      <div class="settings-rows">
+        <div class="setting-row">
+          <div class="setting-info">
+            <span class="setting-label">默认图表类型</span>
+            <span class="setting-desc">打开页面时的默认统计图样式</span>
+          </div>
+          <div class="setting-select-group">
+            <button class="btn-sm setting-opt active" id="setChartBar" onclick="saveSetting('defaultChartType','bar')">柱状图</button>
+            <button class="btn-sm setting-opt" id="setChartLine" onclick="saveSetting('defaultChartType','line')">折线图</button>
+          </div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <span class="setting-label">时间格式</span>
+            <span class="setting-desc">时间显示使用 12 小时制或 24 小时制</span>
+          </div>
+          <div class="setting-select-group">
+            <button class="btn-sm setting-opt active" id="setTime24" onclick="saveSetting('timeFormat','24h')">24小时</button>
+            <button class="btn-sm setting-opt" id="setTime12" onclick="saveSetting('timeFormat','12h')">12小时</button>
+          </div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <span class="setting-label">自定义背景</span>
+            <span class="setting-desc">上传图片作为背景（支持 JPG/PNG/GIF/WebP）</span>
+          </div>
+          <div class="bg-upload-group">
+            <label class="btn-sm setting-opt bg-upload-btn">
+              <svg class="icon" viewBox="0 0 24 24"><use href="static/icons/icons.svg#icon-image-plus"/></svg> 上传
+              <input type="file" id="bgFileInput" accept="image/*" onchange="uploadBgImage(this)" style="display:none;">
+            </label>
+            <button class="btn-sm setting-opt" id="btnClearBg" onclick="clearBgImage()" style="display:none;">清除</button>
+          </div>
+        </div>
+        <div class="setting-row" id="bgPreviewRow" style="display:none;">
+          <div class="setting-info">
+            <span class="setting-label">背景预览</span>
+          </div>
+          <div class="bg-preview-box">
+            <img id="bgPreview" src="" alt="背景预览" />
+          </div>
+        </div>
+      </div>
+    </div>
+    </div><!-- /appearance -->
+
+    <!-- 通用 -->
+    <div class="settings-page" data-page="general">
+    <div class="settings-section">
+      <h3 class="settings-section-title">
+        <svg class="icon" viewBox="0 0 24 24"><use href="static/icons/icons.svg#icon-sliders"/></svg> 通用
+      </h3>
+      <div class="settings-rows">
+        <div class="setting-row">
+          <div class="setting-info">
+            <span class="setting-label">开机自启</span>
+            <span class="setting-desc">Windows 登录时自动启动 BootTracker</span>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="setAutoStart" onchange="saveSetting('autoStart', this.checked)">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <span class="setting-label">自动备份</span>
+            <span class="setting-desc">每次保存数据时自动创建备份</span>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="setAutoBackup" onchange="saveSetting('autoBackup', this.checked)">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <span class="setting-label">备份保留数量</span>
+            <span class="setting-desc">自动清理超出数量的旧备份</span>
+          </div>
+          <input type="number" id="setBackupCount" class="setting-input-num" min="1" max="100" onchange="saveSetting('backupCount', parseInt(this.value))">
+        </div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <span class="setting-label">无活跃会话自动关闭</span>
+            <span class="setting-desc">所有会话结束后自动退出程序</span>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="setAutoCloseIdle" onchange="saveSetting('autoCloseIdle', this.checked)">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <span class="setting-label">自动关闭等待</span>
+            <span class="setting-desc">无活跃会话多少分钟后退出（1-1440）</span>
+          </div>
+          <input type="number" id="setIdleCloseMinutes" class="setting-input-num" min="1" max="1440" onchange="saveSetting('idleCloseMinutes', parseInt(this.value))">
+        </div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <span class="setting-label">重启服务器</span>
+            <span class="setting-desc">重新启动 HTTP 服务，应用配置变更后可使用</span>
+          </div>
+          <button class="btn-sm setting-opt" id="btnRestartServer" onclick="restartServer()">重启</button>
+        </div>
+      </div>
+    </div>
+    </div><!-- /general -->
+
+    <!-- 网络 -->
+    <div class="settings-page" data-page="network">
+    <div class="settings-section">
+      <h3 class="settings-section-title">
+        <svg class="icon" viewBox="0 0 24 24"><use href="static/icons/icons.svg#icon-globe"/></svg> 网络
+      </h3>
+      <div class="settings-rows">
+        <div class="setting-row">
+          <div class="setting-info">
+            <span class="setting-label">局域网访问</span>
+            <span class="setting-desc">允许局域网内其他设备通过 IP 访问</span>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="setLanAccess" onchange="saveSetting('lanAccess', this.checked)">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <span class="setting-label">外网隧道</span>
+            <span class="setting-desc">通过 Cloudflare Tunnel 暴露到公网（需 cloudflared.exe）</span>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="setTunnelEnabled" onchange="saveSetting('tunnelEnabled', this.checked);toggleTunnelSettings()">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <div class="setting-row tunnel-advanced" id="tunnelTokenRow" style="display:none;">
+          <div class="setting-info">
+            <span class="setting-label">Cloudflare 隧道令牌</span>
+            <span class="setting-desc">在 Cloudflare Zero Trust 创建隧道后获取，留空使用随机 URL</span>
+          </div>
+          <input type="password" id="setTunnelToken" class="setting-input" placeholder="输入隧道令牌" onchange="saveSetting('tunnelToken', this.value)">
+        </div>
+
+        <div class="setting-row tunnel-advanced" id="customDomainRow" style="display:none;">
+          <div class="setting-info">
+            <span class="setting-label">自定义域名</span>
+            <span class="setting-desc">已配置的域名（如 boot.example.com），需在 Cloudflare DNS 添加 CNAME</span>
+          </div>
+          <input type="text" id="setCustomDomain" class="setting-input" placeholder="boot.example.com" onchange="saveSetting('customDomain', this.value)">
+        </div>
+
+        <div class="setting-row tunnel-advanced" id="tunnelHelpRow" style="display:none;">
+          <div class="setting-info">
+            <span class="setting-label">设置步骤</span>
+            <div class="setting-desc">
+              <ol style="margin:4px 0 0 18px;padding:0;font-size:0.75rem;color:var(--text-muted);">
+                <li>在 <a href="https://dash.teams.cloudflare.com" target="_blank" style="color:var(--accent);text-decoration:none;">Cloudflare Zero Trust</a> 创建隧道</li>
+                <li>获取隧道令牌并填入上方输入框</li>
+                <li>在 Cloudflare DNS 添加 CNAME 指向隧道</li>
+              </ol>
+            </div>
+          </div>
+        </div>
+
+        <div class="setting-row" id="tunnelUrlRow" style="display:none;">
+          <div class="setting-info">
+            <span class="setting-label">外网访问地址</span>
+            <span class="setting-desc" id="tunnelUrlDesc">每次重启会变化，点击复制</span>
+          </div>
+          <div class="tunnel-url-box">
+            <a href="#" id="tunnelUrlLink" target="_blank" onclick="copyTunnelUrl();return false;">获取中...</a>
+          </div>
+        </div>
+      </div>
+    </div>
+    </div><!-- /network -->
+
+    <!-- 关于 & 更新 -->
+    <div class="settings-page" data-page="about">
+    <div class="settings-section">
+      <h3 class="settings-section-title">
+        <svg class="icon" viewBox="0 0 24 24"><use href="static/icons/icons.svg#icon-info"/></svg> 关于 &amp; 更新
+      </h3>
+      <div class="about-info">
+        <div class="about-row">
+          <span class="about-label">当前版本</span>
+          <span class="about-value" id="aboutVersion">v1.0.0</span>
+        </div>
+        <div class="about-row">
+          <span class="about-label">运行模式</span>
+          <span class="about-value" id="aboutMode">检测中...</span>
+        </div>
+      </div>
+
+      <!-- 版本发布 -->
+      <div class="bump-area" id="bumpArea">
+        <div class="bump-type-row">
+          <button class="btn-sm bump-btn patch" onclick="bumpVersion('patch')" title="修复小问题 (x.x+1)">
+            <svg class="icon" viewBox="0 0 24 24"><use href="static/icons/icons.svg#icon-check"/></svg> 补丁
+          </button>
+          <button class="btn-sm bump-btn minor" onclick="bumpVersion('minor')" title="新增功能 (x+1.0)">
+            <svg class="icon" viewBox="0 0 24 24"><use href="static/icons/icons.svg#icon-plus"/></svg> 次版本
+          </button>
+          <button class="btn-sm bump-btn major" onclick="bumpVersion('major')" title="重大更新 (+1.0.0)">
+            <svg class="icon" viewBox="0 0 24 24"><use href="static/icons/icons.svg#icon-update"/></svg> 主版本
+          </button>
+        </div>
+        <div class="notes-row">
+          <input type="text" id="bumpNotes" class="bump-notes-input" placeholder="本次更新说明（可选）" maxlength="200">
+        </div>
+        <div class="form-msg" id="bumpMsg"></div>
+      </div>
+
+      <!-- 版本历史 -->
+      <div class="version-history" id="versionHistory"></div>
+
+      <!-- 远程检查 -->
+      <div class="update-area" id="updateArea">
+        <button class="btn-sm primary" id="btnCheckUpdate" onclick="checkUpdate()">
+          <svg class="icon" viewBox="0 0 24 24"><use href="static/icons/icons.svg#icon-update"/></svg> 检查远程更新
+        </button>
+        <div class="update-result" id="updateResult"></div>
+      </div>
+    </div>
+    </div><!-- /about -->
   </div>
 </div>
 
@@ -209,15 +512,28 @@
 <div class="admin-overlay" id="adminOverlay">
   <div class="admin-panel">
     <div class="admin-header">
-      <h2>&#x2699; 管理员面板</h2>
-      <button class="btn-close" onclick="toggleAdmin()">&#x2715;</button>
+      <h2>
+        <svg class="icon" viewBox="0 0 24 24"><use href="static/icons/icons.svg#icon-settings"/></svg> 管理员面板
+      </h2>
+      <button class="btn-close" onclick="toggleAdmin()">
+        <svg class="icon" viewBox="0 0 24 24"><use href="static/icons/icons.svg#icon-x"/></svg>
+      </button>
     </div>
 
     <!-- 标签页导航 -->
     <div class="admin-tabs">
-      <button class="admin-tab active" onclick="switchAdminTab('records', this)">&#x1F4CB; 记录管理</button>
-      <button class="admin-tab" onclick="switchAdminTab('trash', this)">&#x1F5D1; 回收站</button>
-      <button class="admin-tab" onclick="switchAdminTab('add', this)">&#x2795; 添加记录</button>
+      <button class="admin-tab active" onclick="switchAdminTab('records', this)">
+        <svg class="icon" viewBox="0 0 24 24"><use href="static/icons/icons.svg#icon-file-text"/></svg> 记录管理
+      </button>
+      <button class="admin-tab" onclick="switchAdminTab('trash', this)">
+        <svg class="icon" viewBox="0 0 24 24"><use href="static/icons/icons.svg#icon-trash-2"/></svg> 回收站
+      </button>
+      <button class="admin-tab" onclick="switchAdminTab('add', this)">
+        <svg class="icon" viewBox="0 0 24 24"><use href="static/icons/icons.svg#icon-plus"/></svg> 添加记录
+      </button>
+      <button class="admin-tab" onclick="switchAdminTab('backup', this)">
+        <svg class="icon" viewBox="0 0 24 24"><use href="static/icons/icons.svg#icon-archive"/></svg> 备份还原
+      </button>
     </div>
 
     <!-- 统计卡片（所有标签页共享） -->
@@ -243,14 +559,22 @@
     <!-- 标签页：记录管理 -->
     <div class="admin-tab-content active" id="tabRecords">
       <div class="admin-actions">
-        <button class="btn-sm success" onclick="exportCSV()">&#x1F4E5; 导出 CSV</button>
-        <button class="btn-sm danger" onclick="clearAll()">&#x1F5D1; 清空全部</button>
+        <button class="btn-sm success" onclick="exportCSV()">
+          <svg class="icon" viewBox="0 0 24 24"><use href="static/icons/icons.svg#icon-download"/></svg> 导出 CSV
+        </button>
+        <button class="btn-sm merge" id="btnMerge" onclick="mergeSelected()" style="display:none;">
+          <svg class="icon" viewBox="0 0 24 24"><use href="static/icons/icons.svg#icon-merge"/></svg> 合并选中
+        </button>
+        <button class="btn-sm danger" onclick="clearAll()">
+          <svg class="icon" viewBox="0 0 24 24"><use href="static/icons/icons.svg#icon-trash-2"/></svg> 清空全部
+        </button>
       </div>
 
       <div class="admin-table-wrap">
         <table class="admin-table">
           <thead>
             <tr>
+              <th class="th-check"><input type="checkbox" id="adminSelectAll"></th>
               <th>#</th>
               <th>开机时间</th>
               <th>关机时间</th>
@@ -268,7 +592,9 @@
     <!-- 标签页：回收站 -->
     <div class="admin-tab-content" id="tabTrash">
       <div class="admin-actions">
-        <button class="btn-sm danger" onclick="clearTrash()">&#x1F5D1; 清空回收站</button>
+        <button class="btn-sm danger" onclick="clearTrash()">
+          <svg class="icon" viewBox="0 0 24 24"><use href="static/icons/icons.svg#icon-trash-2"/></svg> 清空回收站
+        </button>
       </div>
       <div class="admin-table-wrap">
         <table class="admin-table">
@@ -299,15 +625,63 @@
           <input type="datetime-local" id="addShutdownTime" class="form-input">
         </div>
         <div class="form-actions">
-          <button class="btn-sm success" onclick="addRecord()">&#x2714; 添加记录</button>
+          <button class="btn-sm success" onclick="addRecord()">
+            <svg class="icon" viewBox="0 0 24 24"><use href="static/icons/icons.svg#icon-check"/></svg> 添加记录
+          </button>
         </div>
         <div class="form-msg" id="addFormMsg"></div>
       </div>
+    </div>
+
+    <!-- 标签页：备份还原 -->
+    <div class="admin-tab-content" id="tabBackup">
+      <div class="admin-actions">
+        <button class="btn-sm success" onclick="loadBackupList()">
+          <svg class="icon" viewBox="0 0 24 24"><use href="static/icons/icons.svg#icon-refresh-cw"/></svg> 刷新列表
+        </button>
+        <button class="btn-sm danger" onclick="cleanOldBackups()">
+          <svg class="icon" viewBox="0 0 24 24"><use href="static/icons/icons.svg#icon-trash-2"/></svg> 清理旧备份
+        </button>
+      </div>
+      <div class="backup-list-wrap" id="backupListWrap">
+        <div class="admin-empty" id="backupEmptyMsg">点击「刷新列表」加载备份文件</div>
+      </div>
+      <div class="form-msg" id="backupFormMsg"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Modal -->
+<div class="edit-modal" id="editModal">
+  <div class="edit-form">
+    <h3>
+      <svg class="icon" viewBox="0 0 24 24"><use href="static/icons/icons.svg#icon-edit-3"/></svg> 编辑记录
+    </h3>
+    <div class="edit-field">
+      <label>开机时间</label>
+      <input type="datetime-local" id="editBootTime" step="1">
+    </div>
+    <div class="edit-field">
+      <label>关机时间</label>
+      <input type="datetime-local" id="editShutdownTime" step="1">
+      <button class="clear-shutdown" onclick="document.getElementById('editShutdownTime').value=''">清除关机时间</button>
+    </div>
+    <div class="edit-btns">
+      <button class="btn-sm" onclick="closeEditModal()">取消</button>
+      <button class="btn-sm success" onclick="saveEdit()">
+        <svg class="icon" viewBox="0 0 24 24"><use href="static/icons/icons.svg#icon-check"/></svg> 保存
+      </button>
     </div>
   </div>
 </div>
 
 <script src="lib/xlsx.full.min.js"></script>
-<script src="static/js/app.js"></script>
+<script src="static/js/app.js?v=2"></script>
+<script>
+  // 检测 pyWebView 环境并添加 CSS 类
+  if (window.location.protocol === 'file:') {
+    document.documentElement.classList.add('is-webview');
+  }
+</script>
 </body>
 </html>
