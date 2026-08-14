@@ -20,6 +20,9 @@ _DEFAULT_SETTINGS = {
     "tunnelEnabled": False,
     "tunnelToken": "",
     "customDomain": "",
+    "widgetEnabled": False,
+    "widgetPosition": "",
+    "appMode": "dark",
 }
 
 

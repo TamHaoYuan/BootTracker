@@ -84,3 +84,4 @@ from . import backup_routes
 from . import version_routes
 from . import tunnel_routes
 from . import stats_routes
+from . import window_routes

@@ -378,6 +378,16 @@
         </div>
         <div class="setting-row">
           <div class="setting-info">
+            <span class="setting-label">桌面小组件</span>
+            <span class="setting-desc">在桌面显示浮动信息卡片，无需打开浏览器即可查看今日开机次数与运行时长</span>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="setWidgetEnabled" onchange="saveSetting('widgetEnabled', this.checked)">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info">
             <span class="setting-label">重启服务器</span>
             <span class="setting-desc">重新启动 HTTP 服务，应用配置变更后可使用</span>
           </div>

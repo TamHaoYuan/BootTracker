@@ -10,6 +10,7 @@
 - version: 版本管理（版本号、更新检查）
 - tunnel: 隧道管理（Cloudflare Tunnel）
 - tray: 系统托盘（图标、菜单）
+- widget: 桌面小组件（Tkinter 无边框浮动卡片）
 - qt_window: 桌面窗口（PyQt5 WebEngine）
 """
 
@@ -35,7 +36,11 @@ from .tunnel import (
     start_tunnel, stop_tunnel, get_tunnel_url,
 )
 from .tray import create_tray_icon
-from .qt_window import _open_window_qt
+from .widget import start_widget, stop_widget
+from .qt_window import (
+    is_qt_available, open_main_window, run_qt_event_loop,
+    show_main_window, quit_app, set_window_theme,
+)
 from .logging_config import logger, get_logger, setup_logging
 from .routes import registry, get, post, put, delete, route
 
@@ -64,7 +69,9 @@ __all__ = [
     "start_tunnel", "stop_tunnel", "get_tunnel_url",
     
     # UI
-    "create_tray_icon", "_open_window_qt",
+    "create_tray_icon", "start_widget", "stop_widget",
+    "is_qt_available", "open_main_window", "run_qt_event_loop",
+    "show_main_window", "quit_app", "set_window_theme",
     
     # 日志
     "logger", "get_logger", "setup_logging",

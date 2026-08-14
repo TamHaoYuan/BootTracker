@@ -1069,6 +1069,18 @@ function exportXLSX() {
 }
 
 // ——— 暗色/浅色切换 ———
+function notifyWindowTheme() {
+  // 通知 Qt 窗口外壳（标题栏 + WebEngine 背景色）同步当前明暗模式
+  var mode = document.body.classList.contains('light-mode') ? 'light' : 'dark';
+  try {
+    fetch('/api/window-theme', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mode: mode })
+    });
+  } catch (e) {}
+}
+
 function toggleMode() {
   var isLight = document.body.classList.toggle('light-mode');
   var btn = document.getElementById('modeToggle');
@@ -1079,6 +1091,7 @@ function toggleMode() {
   // 刷新图表和热度图（内联样式颜色需重绘）
   refreshChart();
   renderHeatmap();
+  notifyWindowTheme();
 }
 
 // 加载保存的模式
@@ -1090,6 +1103,7 @@ function toggleMode() {
     icon.setAttribute('href', 'static/icons/icons.svg#icon-moon');
     document.getElementById('modeToggle').title = '切换暗色模式';
   }
+  notifyWindowTheme();
 })();
 
 // ——— 主题切换 ———
@@ -1140,6 +1154,7 @@ function setMode(mode) {
   localStorage.setItem('bootTrackerMode', mode);
   updateModeButtons();
   refreshChart();
+  notifyWindowTheme();
 }
 
 function updateModeButtons() {
@@ -2209,6 +2224,7 @@ function loadAppSettings() {
       document.getElementById('setBackupCount').value = s.backupCount || 30;
       document.getElementById('setAutoCloseIdle').checked = !!s.autoCloseIdle;
       document.getElementById('setIdleCloseMinutes').value = s.idleCloseMinutes || 5;
+      document.getElementById('setWidgetEnabled').checked = !!s.widgetEnabled;
       // 显示
       _updateSettingOpt('defaultChartType', s.defaultChartType, 'setChartBar', 'setChartLine');
       _updateSettingOpt('timeFormat', s.timeFormat, 'setTime24', 'setTime12');

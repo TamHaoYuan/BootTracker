@@ -6,15 +6,18 @@ from typing import Tuple, Dict
 
 from ..settings import load_settings, save_settings, setup_autostart, is_autostart_registered
 from ..data_store import MAX_BACKUPS
+from ..config import PORT
 from ..tunnel import start_tunnel, stop_tunnel, _tunnel_proc
+from ..widget import start_widget, stop_widget, is_widget_running
 from ..logging_config import logger
 from . import get, put
 
 
 _VALID_KEYS = {
-    "autoStart", "autoBackup", "backupCount", "autoCloseIdle", 
-    "idleCloseMinutes", "defaultChartType", "timeFormat", 
-    "lanAccess", "tunnelEnabled", "tunnelToken", "customDomain", "customBgImage"
+    "autoStart", "autoBackup", "backupCount", "autoCloseIdle",
+    "idleCloseMinutes", "defaultChartType", "timeFormat",
+    "lanAccess", "tunnelEnabled", "tunnelToken", "customDomain", "customBgImage",
+    "widgetEnabled",
 }
 
 
@@ -36,7 +39,7 @@ def _validate_and_convert(key: str, value) -> Tuple[bool, any]:
             return True, v
         except ValueError:
             return False, "idleCloseMinutes must be integer"
-    elif key in ("autoStart", "autoBackup", "autoCloseIdle", "lanAccess", "tunnelEnabled"):
+    elif key in ("autoStart", "autoBackup", "autoCloseIdle", "lanAccess", "tunnelEnabled", "widgetEnabled"):
         return True, bool(value)
     elif key == "defaultChartType":
         if value not in ("bar", "line"):
@@ -91,14 +94,15 @@ def update_settings(req, body) -> Tuple[int, Dict]:
         logger.info(f"[settings] lanAccess changed to {updates['lanAccess']}, will apply on restart")
     
     settings = load_settings()
-    
+
     old_token = settings.get("tunnelToken", "").strip()
     old_domain = settings.get("customDomain", "").strip()
     tunnel_was_running = _tunnel_proc is not None
-    
+    widget_was_enabled = bool(settings.get("widgetEnabled", False))
+
     settings.update(updates)
     save_settings(settings)
-    
+
     if "tunnelEnabled" in updates:
         if updates["tunnelEnabled"]:
             start_tunnel(
@@ -114,5 +118,19 @@ def update_settings(req, body) -> Tuple[int, Dict]:
             logger.info("[settings] tunnel config changed, restarting tunnel")
             stop_tunnel()
             start_tunnel(tunnel_token=new_token, custom_domain=new_domain)
-    
+
+    # 桌面组件开关：实时启停，无需重启
+    if "widgetEnabled" in updates:
+        want_on = bool(updates["widgetEnabled"])
+        widget_running = is_widget_running()
+        if want_on and not widget_running:
+            import threading
+            logger.info("[settings] enabling desktop widget")
+            threading.Thread(
+                target=start_widget, args=(PORT, threading.Event()), daemon=True
+            ).start()
+        elif not want_on and (widget_running or widget_was_enabled):
+            logger.info("[settings] disabling desktop widget")
+            stop_widget()
+
     return 200, {"ok": True, "updated": list(updates.keys())}

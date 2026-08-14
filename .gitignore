@@ -13,6 +13,7 @@ version.json
 
 # 日志文件
 *.log
+*.log.*
 
 # PID 文件
 *.pid
@@ -31,7 +32,11 @@ static/uploads/
 # 打包输出
 dist/
 build/
+installer_output/
+payload.7z
 *.spec
+!boot-tracker.spec
+!installer.spec
 
 # 第三方库
 lib/
@@ -50,7 +55,11 @@ Thumbs.db
 # 二进制运行时依赖（体积过大，不纳入版本控制）
 cloudflared.exe
 webview2_runtime.exe
+7z.exe
 *.exe
+
+# 第三方工具（Inno Setup 等）
+tools/
 
 # 编辑器配置
 .vscode/

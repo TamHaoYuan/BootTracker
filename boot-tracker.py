@@ -32,10 +32,14 @@ from server.logging_config import logger
 
 
 def _ensure_instance_lock(lock_port: int) -> socket.socket | None:
-    """创建实例锁（通过端口绑定实现）"""
+    """创建实例锁（通过端口绑定实现）。
+
+    注意：此处故意不设置 SO_REUSEADDR。在 Windows 上 SO_REUSEADDR 允许多个套接字
+    绑定同一端口，会使实例锁失效（导致可多开）。保持默认行为，第二个实例 bind() 会
+    失败从而走“唤起已存在窗口”的路径。
+    """
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         sock.bind(("127.0.0.1", lock_port))
         sock.listen(1)
         return sock
@@ -73,7 +77,8 @@ def main() -> None:
         auto_close_and_new_session, backup_data,
         load_settings, setup_autostart, is_autostart_registered,
         start_tunnel, stop_tunnel,
-        create_tray_icon,
+        create_tray_icon, start_widget, stop_widget,
+        is_qt_available, open_main_window, run_qt_event_loop, quit_app,
     )
 
     logger.info("[startup] === BootTracker starting ===")
@@ -81,11 +86,21 @@ def main() -> None:
     # 实例锁检查
     lock_socket = _ensure_instance_lock(LOCK_PORT)
     if not lock_socket:
-        logger.info("[startup] another instance already running, opening browser")
+        logger.info("[startup] another instance running, raising its window")
         try:
-            webbrowser.open(f"http://localhost:{PORT}")
-        except Exception:
-            pass
+            import urllib.request
+            req = urllib.request.Request(
+                f"http://127.0.0.1:{PORT}/api/raise-window",
+                method="POST", data=b"{}",
+                headers={"Content-Type": "application/json"},
+            )
+            urllib.request.urlopen(req, timeout=2).read()
+        except Exception as e:
+            logger.info(f"[startup] raise-window failed ({e}), falling back to browser")
+            try:
+                webbrowser.open(f"http://localhost:{PORT}")
+            except Exception:
+                pass
         sys.exit(0)
     set_lock_socket(lock_socket)
 
@@ -116,12 +131,16 @@ def main() -> None:
     logger.info(f"[startup] starting server on {bind_addr}:{PORT}")
     start_server(bind_addr=bind_addr, port=PORT)
 
-    # 打开浏览器
-    logger.info("[startup] server started, opening browser")
-    try:
-        webbrowser.open(f"http://localhost:{PORT}")
-    except Exception:
-        pass
+    # 打开主界面：PyQt5 窗口优先，不可用时回退系统浏览器
+    use_qt = is_qt_available() and open_main_window(PORT)
+    if use_qt:
+        logger.info("[startup] main UI opened as PyQt5 window")
+    else:
+        logger.info("[startup] PyQt5 unavailable, falling back to browser")
+        try:
+            webbrowser.open(f"http://localhost:{PORT}")
+        except Exception:
+            pass
 
     # 启动隧道（如配置）
     if settings.get("tunnelEnabled", False):
@@ -134,18 +153,48 @@ def main() -> None:
     # 创建系统托盘图标
     icon = create_tray_icon(stop_event)
 
+    # 启动桌面小组件（如启用）
+    if settings.get("widgetEnabled", False):
+        logger.info("[startup] starting desktop widget")
+        threading.Thread(
+            target=start_widget, args=(PORT, stop_event), daemon=True
+        ).start()
+
     # 启动空闲检测线程
     idle_thread = threading.Thread(target=_idle_check, args=(stop_event, settings), daemon=True)
     idle_thread.start()
 
-    # 运行托盘图标
-    icon.run()
+    # Qt 模式下监听 stop_event，触发主线程事件循环退出
+    # （保证 idle 超时 / 组件退出 / /api/stop 等场景能干净关闭 Qt）
+    if use_qt:
+        def _qt_shutdown_watcher():
+            stop_event.wait()
+            quit_app()
+        threading.Thread(target=_qt_shutdown_watcher, daemon=True).start()
+        # 托盘进入后台线程，主线程交给 Qt 事件循环
+        logger.info("[startup] running Qt event loop on main thread; tray detached")
+        icon.run_detached()
+        run_qt_event_loop()
+        logger.info("[shutdown] Qt loop exited, shutting down")
+        stop_event.set()
+        try:
+            icon.stop()
+        except Exception:
+            pass
+    else:
+        # 回退模式：pystray 占用主线程
+        logger.info("[startup] running pystray loop on main thread")
+        icon.run()
+        logger.info("[shutdown] tray icon stopped, shutting down")
+        stop_event.set()
 
-    # 关闭流程
-    logger.info("[shutdown] tray icon stopped, shutting down")
-    stop_event.set()
+    # 统一关闭流程
     stop_tunnel()
     shutdown_server()
+    try:
+        stop_widget()
+    except Exception:
+        pass
     try:
         lock_socket.close()
     except Exception:

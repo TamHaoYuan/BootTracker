@@ -27,5 +27,5 @@ TUNNEL_LOG_FILE = os.path.join(APP_DIR, "tunnel.log")
 CLOUDFLARED_PATH = os.path.join(_RESOURCE_DIR, "cloudflared.exe")
 
 MAX_BACKUPS = 30
-APP_VERSION = "1.0.0"
+APP_VERSION = "1.1.0"
 UPDATE_CHECK_URL = ""
