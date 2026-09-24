@@ -2,61 +2,35 @@
 # -*- coding: utf-8 -*-
 """系统托盘模块 — 负责创建和管理系统托盘图标"""
 import os
-import math
 import threading
 
-from PIL import Image, ImageDraw
+from PIL import Image
 
 
-def draw_icon_image():
-    """绘制应用图标（显示器 + 紫色进度弧），返回 PIL RGBA Image。
+# 静态图标路径（相对于项目根目录）
+_ICON_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "static", "icons", "icon.png")
 
-    供系统托盘与 Qt 主窗口任务栏图标共用，保证视觉一致。
+
+def load_icon_image():
+    """加载静态应用图标，返回 PIL RGBA Image。
+
+    供系统托盘与 Tauri 主窗口任务栏图标共用。
     """
-    size = 64
-    img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(img)
-
-    scr_x1, scr_y1, scr_x2, scr_y2 = 10, 8, 54, 44
-    draw.rounded_rectangle(
-        [scr_x1, scr_y1, scr_x2, scr_y2], radius=4,
-        outline=(230, 230, 230, 255), width=2
-    )
-    stand_cx = 32
-    draw.line([(stand_cx - 8, scr_y2), (stand_cx + 8, scr_y2)],
-              fill=(230, 230, 230, 255), width=2)
-    draw.line([(stand_cx, scr_y2), (stand_cx, scr_y2 + 5)],
-              fill=(230, 230, 230, 255), width=2)
-    draw.line([(stand_cx - 6, scr_y2 + 5), (stand_cx + 6, scr_y2 + 5)],
-              fill=(230, 230, 230, 255), width=2)
-
-    pcx, pcy = 32, 26
-    pr = 10
-    draw.line([(pcx, pcy - pr + 3), (pcx, pcy - 3)],
-              fill=(139, 92, 246, 255), width=2)
-    points = []
-    for deg in range(210, 331, 3):
-        rad = math.radians(deg)
-        px = pcx + pr * math.cos(rad)
-        py = pcy - pr * math.sin(rad)
-        points.append((px, py))
-    if len(points) > 1:
-        draw.line(points, fill=(139, 92, 246, 255), width=2)
-    return img
+    return Image.open(_ICON_PATH).convert("RGBA")
 
 
 def create_tray_icon(stop_event):
-    img = draw_icon_image()
+    img = load_icon_image()
 
     def show_window(icon, item=None):
-        """唤起主窗口：Qt 优先，回退系统浏览器"""
+        """唤起主窗口：Tauri 优先，回退系统浏览器"""
         try:
-            from .qt_window import show_main_window
-            if show_main_window():
+            from .tauri_window import raise_tauri_window
+            if raise_tauri_window():
                 return
         except Exception as e:
             from .logging_config import logger
-            logger.error(f"[tray] show_main_window failed: {e}")
+            logger.error(f"[tray] raise_tauri_window failed: {e}")
         try:
             import webbrowser
             from .config import PORT
@@ -93,20 +67,13 @@ def create_tray_icon(stop_event):
             logger.error(f"[tray] toggle widget failed: {e}")
 
     def exit_app(icon, item=None):
-        """干净退出：Qt 主循环退出后由 main() 走清理流程；无 Qt 时硬退出"""
+        """干净退出：设置 stop_event 后由 main() 走清理流程"""
         if stop_event:
             stop_event.set()
         try:
             icon.stop()
         except Exception:
             pass
-        try:
-            from .qt_window import quit_app
-            if quit_app():
-                return  # Qt 主循环将退出，main() 执行清理
-        except Exception as e:
-            from .logging_config import logger
-            logger.error(f"[tray] quit_app failed: {e}")
         os._exit(0)
 
     import pystray

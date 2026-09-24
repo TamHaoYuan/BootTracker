@@ -1,0 +1,471 @@
+/* ========== 全局视觉呈现（继承旧版 Dark Gallery 风格） ==========
+ * 本文件从 static/css/style.css 抽取以下视觉层：
+ * 1. glass-orb 背景装饰球（漂浮 + 呼吸）
+ * 2. 动画关键帧（fadeInUp / scaleIn / countPulse / breathe / shimmer 等）
+ * 3. Ant Design 组件样式覆盖（Card 玻璃态、Table 行动画、Menu/Sider 主题等）
+ * 4. 辅助工具类（动画延迟类 .anim-d1~d6）
+ * 变量来自 tokens.css，不在此重复声明
+ */
+
+/* ========== 动画关键帧 ========== */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+@keyframes breathe {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.15); opacity: 0.75; }
+}
+@keyframes glow {
+  0%, 100% { box-shadow: 0 0 20px rgba(var(--accent-rgb), 0.1); }
+  50% { box-shadow: 0 0 40px rgba(var(--accent-rgb), 0.2), 0 0 60px rgba(var(--accent-rgb), 0.05); }
+}
+@keyframes borderGlow {
+  0%, 100% { border-color: rgba(var(--accent-rgb), 0.12); }
+  50% { border-color: rgba(var(--accent-rgb), 0.25); }
+}
+@keyframes glassFloat {
+  0%, 100% { transform: translateY(0) translateX(0) scale(1); }
+  33% { transform: translateY(-30px) translateX(20px) scale(1.05); }
+  66% { transform: translateY(20px) translateX(-15px) scale(0.95); }
+}
+@keyframes glassFloat2 {
+  0%, 100% { transform: translateY(0) translateX(0) scale(1); }
+  50% { transform: translateY(40px) translateX(-30px) scale(1.08); }
+}
+@keyframes glassFloat3 {
+  0%, 100% { transform: translateY(0) translateX(0) scale(1); }
+  50% { transform: translateY(-50px) translateX(25px) scale(0.9); }
+}
+@keyframes countPulse {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.15); color: var(--accent-light); }
+  100% { transform: scale(1); }
+}
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* 非线性过场：快起缓停 + 轻微过冲，页面切换时重放（key=pathname） */
+@keyframes riseIn {
+  0% { opacity: 0; transform: translateY(20px) scale(0.988); }
+  60% { opacity: 1; }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+.page-enter {
+  animation: riseIn 0.5s var(--ease-out-expo) both;
+}
+
+/* ========== APP 启动动画（图标居中 → 左移 + 名称） ========== */
+/* 阶段1：图标从透明缩放进入并居中（弹性过冲） */
+@keyframes splashIconIn {
+  0% { opacity: 0; transform: scale(0.6); }
+  60% { opacity: 1; transform: scale(1.08); }
+  100% { opacity: 1; transform: scale(1); }
+}
+/* 阶段2：图标从居中位置左移到最终位置（非线性缓出） */
+@keyframes splashIconLeft {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(var(--splash-shift, -120px)); }
+}
+/* 阶段2：名称从透明 + 右侧偏移滑入（非线性缓出） */
+@keyframes splashNameIn {
+  0% { opacity: 0; transform: translateX(24px); }
+  50% { opacity: 1; }
+  100% { opacity: 1; transform: translateX(0); }
+}
+/* 阶段3：整层淡出 */
+@keyframes splashFadeOut {
+  0% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* ========== 动画延迟工具类（非线性缓动） ========== */
+.anim-d1 { animation: fadeInUp 0.6s 0.3s var(--ease-out-expo) both; }
+.anim-d2 { animation: fadeInUp 0.6s 0.4s var(--ease-out-expo) both; }
+.anim-d3 { animation: fadeInUp 0.6s 0.5s var(--ease-out-expo) both; }
+.anim-d4 { animation: fadeInUp 0.6s 0.6s var(--ease-out-expo) both; }
+.anim-d5 { animation: fadeInUp 0.6s 0.7s var(--ease-out-expo) both; }
+.anim-d6 { animation: fadeIn 0.6s 0.8s var(--ease-out-expo) both; }
+
+/* ========== 今日开机卡片：显眼发光 ========== */
+.today-boot-card {
+  animation: glow 4s var(--ease-in-out-quart) infinite;
+}
+
+/* ========== Glass Orb 背景装饰 ========== */
+.glass-orb {
+  position: fixed;
+  pointer-events: none;
+  z-index: 0;
+  border-radius: 50%;
+  filter: blur(80px);
+}
+.glass-orb.orb-1 {
+  top: -100px;
+  left: -100px;
+  width: 400px;
+  height: 400px;
+  background: rgba(var(--accent-rgb), 0.08);
+  animation: glassFloat 20s var(--ease-in-out-quart) infinite;
+}
+.glass-orb.orb-2 {
+  bottom: -150px;
+  right: -100px;
+  width: 500px;
+  height: 500px;
+  background: rgba(var(--accent-rgb), 0.06);
+  animation: glassFloat2 25s var(--ease-in-out-quart) infinite;
+}
+.glass-orb.orb-3 {
+  top: 40%;
+  right: 10%;
+  width: 300px;
+  height: 300px;
+  background: rgba(var(--accent-rgb), 0.04);
+  animation: glassFloat3 30s var(--ease-in-out-quart) infinite;
+}
+
+/* ========== Ant Design 组件样式覆盖 ========== */
+
+/* Layout — Sider 侧边栏 */
+.ant-layout-sider {
+  background: var(--bg-card) !important;
+  backdrop-filter: blur(60px) saturate(180%);
+  -webkit-backdrop-filter: blur(60px) saturate(180%);
+  border-right: 1px solid var(--border-light);
+}
+
+/* Sider 收起触发器 */
+.ant-layout-sider-trigger {
+  background: var(--bg-card-darker) !important;
+  border-top: 1px solid var(--border-light);
+}
+
+/* Header */
+.ant-layout-header {
+  background: var(--bg-card) !important;
+  backdrop-filter: blur(60px) saturate(180%);
+  -webkit-backdrop-filter: blur(60px) saturate(180%);
+  border-bottom: 1px solid var(--border-light);
+  box-shadow: 0 1px 20px rgba(var(--accent-rgb), 0.06);
+}
+
+/* Menu — 侧栏菜单 */
+.ant-menu {
+  background: transparent !important;
+  border-inline-end: none !important;
+}
+.ant-menu-item {
+  color: var(--text-muted) !important;
+}
+.ant-menu-item:hover {
+  color: var(--text-primary) !important;
+  background: rgba(var(--accent-rgb), 0.06) !important;
+}
+.ant-menu-item-selected {
+  color: var(--text-primary) !important;
+  background: rgba(var(--accent-rgb), 0.15) !important;
+  box-shadow: 0 2px 8px rgba(var(--accent-rgb), 0.1);
+}
+.ant-menu-item-selected .anticon {
+  color: var(--accent) !important;
+}
+
+/* Card — 玻璃态卡片 */
+.ant-card {
+  background: var(--bg-card) !important;
+  backdrop-filter: blur(24px) saturate(150%);
+  -webkit-backdrop-filter: blur(24px) saturate(150%);
+  border: 1px solid var(--border-light) !important;
+  border-radius: 16px !important;
+  box-shadow: 0 8px 32px var(--shadow-color), inset 0 1px 0 var(--glass-light) !important;
+  transition: transform 0.35s var(--ease-spring), border-color 0.3s ease, box-shadow 0.4s var(--ease-smooth) !important;
+}
+.ant-card:hover {
+  border-color: rgba(var(--accent-rgb), 0.25) !important;
+  box-shadow: 0 12px 40px rgba(var(--accent-rgb), 0.08), inset 0 1px 0 var(--glass-border) !important;
+  transform: translateY(-3px);
+}
+.ant-card-head {
+  border-bottom: 1px solid var(--border-light) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Table — 表格行入场动画 */
+.ant-table-wrapper {
+  background: var(--bg-card) !important;
+  backdrop-filter: blur(40px);
+  -webkit-backdrop-filter: blur(40px);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  overflow: hidden;
+}
+.ant-table {
+  background: transparent !important;
+}
+.ant-table-thead > tr > th {
+  background: var(--bg-input) !important;
+  color: var(--text-muted) !important;
+  border-bottom: 1px solid var(--border-color) !important;
+  font-weight: 500;
+}
+.ant-table-tbody > tr {
+  animation: slideInLeft 0.45s var(--ease-out-expo) both;
+}
+.ant-table-tbody > tr:nth-child(1) { animation-delay: 0.02s; }
+.ant-table-tbody > tr:nth-child(2) { animation-delay: 0.05s; }
+.ant-table-tbody > tr:nth-child(3) { animation-delay: 0.08s; }
+.ant-table-tbody > tr:nth-child(4) { animation-delay: 0.11s; }
+.ant-table-tbody > tr:nth-child(5) { animation-delay: 0.14s; }
+.ant-table-tbody > tr:nth-child(6) { animation-delay: 0.17s; }
+.ant-table-tbody > tr:nth-child(7) { animation-delay: 0.20s; }
+.ant-table-tbody > tr:nth-child(8) { animation-delay: 0.23s; }
+.ant-table-tbody > tr:nth-child(n+9) { animation-delay: 0.26s; }
+.ant-table-tbody > tr > td {
+  color: var(--text-primary) !important;
+  border-bottom: 1px solid var(--border-light) !important;
+}
+.ant-table-tbody > tr:hover > td {
+  background: rgba(var(--accent-rgb), 0.05) !important;
+}
+
+/* Modal — 模态框玻璃态 */
+.ant-modal-content {
+  background: var(--bg-card) !important;
+  backdrop-filter: blur(50px) saturate(180%);
+  -webkit-backdrop-filter: blur(50px) saturate(180%);
+  border: 1px solid rgba(var(--accent-rgb), 0.18) !important;
+  border-radius: 20px !important;
+  box-shadow: 0 0 60px rgba(var(--accent-rgb), 0.06), 0 25px 60px var(--dark-overlay),
+    inset 0 1px 0 var(--glass-active) !important;
+}
+.ant-modal-header {
+  background: transparent !important;
+  border-bottom: 1px solid var(--border-color) !important;
+}
+.ant-modal-title {
+  color: var(--text-primary) !important;
+}
+
+/* Tabs — 标签页 */
+.ant-tabs-tab {
+  color: var(--text-muted) !important;
+}
+.ant-tabs-tab:hover {
+  color: var(--text-secondary) !important;
+}
+.ant-tabs-tab-active .ant-tabs-tab-btn {
+  color: var(--text-primary) !important;
+}
+.ant-tabs-ink-bar {
+  background: rgba(var(--accent-rgb), 0.5) !important;
+}
+.ant-tabs-nav::before {
+  border-bottom: 1px solid var(--border-light) !important;
+}
+
+/* Segmented — 分段控制器 */
+.ant-segmented {
+  background: var(--bg-card-darker) !important;
+  border-radius: 12px !important;
+  padding: 4px !important;
+}
+.ant-segmented-item {
+  color: var(--text-muted) !important;
+}
+.ant-segmented-item-selected {
+  background: rgba(var(--accent-rgb), 0.15) !important;
+  color: var(--text-primary) !important;
+  box-shadow: 0 2px 8px rgba(var(--accent-rgb), 0.1) !important;
+}
+
+/* Input / InputNumber */
+.ant-input,
+.ant-input-affix-wrapper,
+.ant-input-number,
+.ant-picker {
+  background: var(--bg-input) !important;
+  border-color: var(--border-muted) !important;
+  color: var(--text-primary) !important;
+  border-radius: 10px !important;
+}
+.ant-input:focus,
+.ant-input-focused,
+.ant-input-affix-wrapper:focus,
+.ant-input-affix-wrapper-focused,
+.ant-input-number-focused,
+.ant-picker-focused {
+  border-color: rgba(var(--accent-rgb), 0.5) !important;
+  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.1) !important;
+}
+.ant-input::placeholder {
+  color: var(--text-muted) !important;
+  opacity: 0.7;
+}
+.ant-picker-input > input::placeholder {
+  color: var(--text-muted) !important;
+}
+
+/* Select */
+.ant-select-selector {
+  background: var(--bg-input) !important;
+  border-color: var(--border-muted) !important;
+  color: var(--text-primary) !important;
+  border-radius: 10px !important;
+}
+.ant-select-arrow {
+  color: var(--text-muted) !important;
+}
+.ant-select-dropdown {
+  background: var(--bg-card) !important;
+  border: 1px solid var(--border-color) !important;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+.ant-select-item {
+  color: var(--text-secondary) !important;
+}
+.ant-select-item-option-active {
+  background: rgba(var(--accent-rgb), 0.1) !important;
+}
+.ant-select-item-option-selected {
+  background: rgba(var(--accent-rgb), 0.2) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Switch */
+.ant-switch-checked {
+  background: rgba(var(--accent-rgb), 0.6) !important;
+}
+
+/* Statistic */
+.ant-statistic-content {
+  color: var(--text-primary) !important;
+}
+.ant-statistic-content-value {
+  font-weight: 700;
+  animation: countPulse 0.7s ease both;
+}
+
+/* Badge — 状态灯呼吸效果 */
+.ant-badge-status-dot {
+  animation: breathe 2.4s ease-in-out infinite;
+}
+
+/* Tag */
+.ant-tag {
+  border-radius: 8px !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+/* Drawer / Popover / Tooltip */
+.ant-tooltip-inner {
+  background: var(--bg-card) !important;
+  border: 1px solid rgba(var(--accent-rgb), 0.2) !important;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 10px !important;
+  color: var(--text-primary) !important;
+}
+.ant-popover-inner {
+  background: var(--bg-card) !important;
+  border: 1px solid var(--border-color) !important;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 12px !important;
+}
+
+/* Empty */
+.ant-empty-description {
+  color: var(--text-disabled) !important;
+}
+
+/* Upload Dragger */
+.ant-upload-drag {
+  background: var(--bg-card-light) !important;
+  border-color: var(--border-muted) !important;
+  border-radius: 14px !important;
+}
+.ant-upload-drag:hover {
+  border-color: rgba(var(--accent-rgb), 0.35) !important;
+}
+
+/* Timeline */
+.ant-timeline-item-content {
+  color: var(--text-secondary) !important;
+}
+
+/* 浅色模式下 AntD 组件微调 */
+body.light-mode .ant-card {
+  background: rgba(255, 255, 255, 0.85) !important;
+}
+body.light-mode .ant-layout-sider {
+  background: rgba(255, 255, 255, 0.9) !important;
+}
+body.light-mode .ant-layout-header {
+  background: rgba(255, 255, 255, 0.85) !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+body.light-mode .ant-modal-content {
+  background: rgba(255, 255, 255, 0.95) !important;
+}
+body.light-mode .ant-table-thead > tr > th {
+  background: rgba(255, 255, 255, 0.95) !important;
+}
+
+/* ========== 响应式 ========== */
+:root {
+  --content-pad: 24px;
+}
+/* 小屏：内容区 padding 缩到 16px */
+@media screen and (max-width: 1023px) {
+  :root {
+    --content-pad: 16px;
+  }
+}
+/* 大屏：内容区 padding 增至 32px */
+@media screen and (min-width: 1440px) {
+  :root {
+    --content-pad: 32px;
+  }
+}
+
+/* 玻璃态统一：内容卡片应用 backdrop-filter，与 Dark Gallery 风格一致 */
+.app-content .ant-card {
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+}
+
+@media screen and (max-width: 768px) {
+  .ant-layout-sider {
+    position: fixed !important;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    z-index: 1000;
+  }
+  /* 窄屏隐藏装饰球，避免性能影响 */
+  .glass-orb { display: none; }
+}

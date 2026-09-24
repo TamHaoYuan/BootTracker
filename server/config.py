@@ -15,15 +15,15 @@ PORT = 18792
 LOCK_PORT = PORT + 1
 
 HTML_FILE = os.path.join(_RESOURCE_DIR, "index.html")
-DATA_FILE = os.path.join(APP_DIR, "boot-data.json")
-TRASH_FILE = os.path.join(APP_DIR, "trash-data.json")
+DB_FILE = os.path.join(APP_DIR, "boot-data.db")
 SETTINGS_FILE = os.path.join(APP_DIR, "settings.json")
 VERSION_FILE = os.path.join(APP_DIR, "version.json")
 PID_FILE = os.path.join(APP_DIR, "boot-tracker.pid")
-LOG_FILE = os.path.join(APP_DIR, "boot-tracker.log")
+LOG_DIR = os.path.join(APP_DIR, "logs")
+LOG_FILE = os.path.join(LOG_DIR, "boot-tracker.log")
 BACKUP_DIR = os.path.join(APP_DIR, "backup")
 UPLOAD_DIR = os.path.join(APP_DIR, "static", "uploads")
-TUNNEL_LOG_FILE = os.path.join(APP_DIR, "tunnel.log")
+TUNNEL_LOG_FILE = os.path.join(LOG_DIR, "tunnel.log")
 CLOUDFLARED_PATH = os.path.join(_RESOURCE_DIR, "cloudflared.exe")
 
 MAX_BACKUPS = 30

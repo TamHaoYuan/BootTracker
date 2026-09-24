@@ -7,10 +7,10 @@
 2. 自动关闭未结束会话并创建新会话
 3. 自动备份数据
 4. 启动 HTTP 服务器
-5. 打开浏览器
+5. 启动 Tauri 窗口（新版本默认，不可用时回退浏览器）
 6. 启动隧道（如配置）
-7. 创建系统托盘图标
-8. 空闲检测线程（如配置）
+7. 托盘：Tauri 模式由 Rust 托盘接管；仅浏览器回退模式用 pystray
+8. 空闲检测线程（如配置）+ Tauri/小组件看门狗
 """
 
 import os
@@ -47,6 +47,48 @@ def _ensure_instance_lock(lock_port: int) -> socket.socket | None:
         return None
 
 
+def _tauri_watchdog(stop_event: threading.Event, port: int) -> None:
+    """看门狗：Tauri 进程异常退出自动重启；小组件启用但进程不在时自动拉起"""
+    from server import tauri_window
+    from server.settings import load_settings
+    from server.widget import is_widget_available, is_widget_running, start_widget
+
+    restarts = 0
+    while not stop_event.is_set():
+        proc = tauri_window.get_tauri_proc()
+        if proc is not None and proc.poll() is not None:
+            # Tauri 已退出：stop_event 由 /api/stop（Rust 托盘“退出”）触发的属正常退出
+            if stop_event.is_set():
+                break
+            restarts += 1
+            if restarts > 3:
+                logger.error("[watchdog] tauri exited unexpectedly too many times, giving up")
+                break
+            logger.warning(
+                f"[watchdog] tauri exited unexpectedly (code={proc.returncode}), "
+                f"restarting ({restarts}/3)"
+            )
+            stop_event.wait(2)
+            if stop_event.is_set():
+                break
+            tauri_window.reset_tauri_proc()
+            if not tauri_window.start_tauri():
+                logger.error("[watchdog] tauri restart failed")
+                break
+            continue
+
+        # 小组件自愈：settings 启用但进程不在（崩溃/未拉起）时重启
+        try:
+            if load_settings().get("widgetEnabled", False) \
+                    and is_widget_available() and not is_widget_running():
+                logger.info("[watchdog] widget not running, restarting")
+                start_widget(port, stop_event)
+        except Exception as e:
+            logger.error(f"[watchdog] widget restart failed: {e}")
+
+        stop_event.wait(5)
+
+
 def _idle_check(stop_event: threading.Event, settings: dict) -> None:
     """空闲检测线程：检测用户空闲时间，超时后关闭应用"""
     while not stop_event.is_set():
@@ -78,7 +120,7 @@ def main() -> None:
         load_settings, setup_autostart, is_autostart_registered,
         start_tunnel, stop_tunnel,
         create_tray_icon, start_widget, stop_widget,
-        is_qt_available, open_main_window, run_qt_event_loop, quit_app,
+        is_tauri_available, start_tauri, stop_tauri,
     )
 
     logger.info("[startup] === BootTracker starting ===")
@@ -131,12 +173,18 @@ def main() -> None:
     logger.info(f"[startup] starting server on {bind_addr}:{PORT}")
     start_server(bind_addr=bind_addr, port=PORT)
 
-    # 打开主界面：PyQt5 窗口优先，不可用时回退系统浏览器
-    use_qt = is_qt_available() and open_main_window(PORT)
-    if use_qt:
-        logger.info("[startup] main UI opened as PyQt5 window")
-    else:
-        logger.info("[startup] PyQt5 unavailable, falling back to browser")
+    # 打开主界面：新版本默认 Tauri，不可用时回退系统浏览器
+    use_tauri = False
+    
+    if is_tauri_available():
+        # 开发模式可通过环境变量控制
+        dev_mode = os.environ.get("BOOTTRACKER_DEV_MODE", "").lower() in ("1", "true", "dev")
+        use_tauri = start_tauri(dev_mode=dev_mode)
+        if use_tauri:
+            logger.info("[startup] main UI opened as Tauri window")
+    
+    if not use_tauri:
+        logger.info("[startup] no native window available, falling back to browser")
         try:
             webbrowser.open(f"http://localhost:{PORT}")
         except Exception:
@@ -150,8 +198,12 @@ def main() -> None:
             custom_domain=settings.get("customDomain", ""),
         )
 
-    # 创建系统托盘图标
-    icon = create_tray_icon(stop_event)
+    # 托盘：Tauri 模式由 Rust 托盘接管（避免双托盘）；仅浏览器回退模式用 pystray
+    icon = None
+    if use_tauri:
+        logger.info("[startup] rust tray active, skipping legacy pystray tray")
+    else:
+        icon = create_tray_icon(stop_event)
 
     # 启动桌面小组件（如启用）
     if settings.get("widgetEnabled", False):
@@ -164,31 +216,24 @@ def main() -> None:
     idle_thread = threading.Thread(target=_idle_check, args=(stop_event, settings), daemon=True)
     idle_thread.start()
 
-    # Qt 模式下监听 stop_event，触发主线程事件循环退出
-    # （保证 idle 超时 / 组件退出 / /api/stop 等场景能干净关闭 Qt）
-    if use_qt:
-        def _qt_shutdown_watcher():
-            stop_event.wait()
-            quit_app()
-        threading.Thread(target=_qt_shutdown_watcher, daemon=True).start()
-        # 托盘进入后台线程，主线程交给 Qt 事件循环
-        logger.info("[startup] running Qt event loop on main thread; tray detached")
-        icon.run_detached()
-        run_qt_event_loop()
-        logger.info("[shutdown] Qt loop exited, shutting down")
-        stop_event.set()
-        try:
-            icon.stop()
-        except Exception:
-            pass
-    else:
-        # 回退模式：pystray 占用主线程
+    # 启动看门狗（Tauri 崩溃自动重启 + 小组件自愈）
+    threading.Thread(target=_tauri_watchdog, args=(stop_event, PORT), daemon=True).start()
+
+    if icon is not None:
+        # pystray 占用主线程（仅浏览器回退模式）
         logger.info("[startup] running pystray loop on main thread")
         icon.run()
         logger.info("[shutdown] tray icon stopped, shutting down")
-        stop_event.set()
+    else:
+        # Tauri 模式：退出由 Rust 托盘经 /api/stop 触发 stop_event
+        logger.info("[startup] running main loop (rust tray mode)")
+        while not stop_event.is_set():
+            stop_event.wait(1)
+        logger.info("[shutdown] stop event received, shutting down")
+    stop_event.set()
 
     # 统一关闭流程
+    stop_tauri()
     stop_tunnel()
     shutdown_server()
     try:

@@ -1,0 +1,105 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  # ---- 前端：lint / typecheck / test / build ----
+  frontend:
+    name: Frontend (Vite + React + TS + AntD)
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: TypeScript check
+        # tsc -b 会同时校验 references（tsconfig.node.json）
+        run: npx tsc -b --pretty false
+
+      - name: Unit tests (Vitest)
+        run: npm run test
+
+      - name: Build (Vite production)
+        run: npx vite build
+        env:
+          # CI 下不做渐进式终端输出、不写交互式 progress
+          CI: 'true'
+
+  # ---- 后端：pytest + pytest-qt ----
+  backend:
+    name: Backend (pytest + pytest-qt)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-qt
+        continue-on-error: true
+        # 注：若项目根没有 requirements.txt，需要先创建；CI 里先允许跳过，真正包内 PyQt5 安装由项目提供
+
+      - name: Run tests
+        run: pytest tests -v --tb=short -q
+        env:
+          QT_QPA_PLATFORM: offscreen
+
+  # ---- 发布：tag push 时构建安装包 ----
+  release:
+    name: Build Installer (tag push)
+    needs: [frontend, backend]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install python deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pyinstaller
+        continue-on-error: true
+
+      - name: Build (frontend + pyinstaller)
+        shell: cmd
+        run: scripts\build.bat
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/BootTracker-Setup.exe
+            dist/BootTracker/*

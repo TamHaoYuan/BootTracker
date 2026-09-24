@@ -10,13 +10,13 @@
 - version: 版本管理（版本号、更新检查）
 - tunnel: 隧道管理（Cloudflare Tunnel）
 - tray: 系统托盘（图标、菜单）
-- widget: 桌面小组件（Tkinter 无边框浮动卡片）
-- qt_window: 桌面窗口（PyQt5 WebEngine）
+- widget: 桌面小组件（Rust/Tauri 组件进程管理）
+- tauri_window: 桌面窗口（Tauri v2，新版本默认）
 """
 
 from .config import (
-    PORT, LOCK_PORT, APP_DIR, HTML_FILE, DATA_FILE, TRASH_FILE,
-    SETTINGS_FILE, VERSION_FILE, PID_FILE, LOG_FILE, BACKUP_DIR,
+    PORT, LOCK_PORT, APP_DIR, HTML_FILE, DB_FILE,
+    SETTINGS_FILE, VERSION_FILE, PID_FILE, LOG_DIR, LOG_FILE, BACKUP_DIR,
     UPLOAD_DIR, TUNNEL_LOG_FILE, CLOUDFLARED_PATH, MAX_BACKUPS, APP_VERSION, UPDATE_CHECK_URL,
 )
 from .http_handler import (
@@ -37,17 +37,17 @@ from .tunnel import (
 )
 from .tray import create_tray_icon
 from .widget import start_widget, stop_widget
-from .qt_window import (
-    is_qt_available, open_main_window, run_qt_event_loop,
-    show_main_window, quit_app, set_window_theme,
+from .tauri_window import (
+    is_tauri_available, start_tauri, stop_tauri,
+    raise_tauri_window, set_tauri_theme,
 )
 from .logging_config import logger, get_logger, setup_logging
 from .routes import registry, get, post, put, delete, route
 
 __all__ = [
     # 配置常量
-    "PORT", "LOCK_PORT", "APP_DIR", "HTML_FILE", "DATA_FILE", "TRASH_FILE",
-    "SETTINGS_FILE", "VERSION_FILE", "PID_FILE", "LOG_FILE", "BACKUP_DIR",
+    "PORT", "LOCK_PORT", "APP_DIR", "HTML_FILE", "DB_FILE",
+    "SETTINGS_FILE", "VERSION_FILE", "PID_FILE", "LOG_DIR", "LOG_FILE", "BACKUP_DIR",
     "UPLOAD_DIR", "TUNNEL_LOG_FILE", "CLOUDFLARED_PATH", "MAX_BACKUPS",
     "APP_VERSION", "UPDATE_CHECK_URL",
     
@@ -70,8 +70,9 @@ __all__ = [
     
     # UI
     "create_tray_icon", "start_widget", "stop_widget",
-    "is_qt_available", "open_main_window", "run_qt_event_loop",
-    "show_main_window", "quit_app", "set_window_theme",
+    # Tauri 窗口（新版本默认）
+    "is_tauri_available", "start_tauri", "stop_tauri",
+    "raise_tauri_window", "set_tauri_theme",
     
     # 日志
     "logger", "get_logger", "setup_logging",

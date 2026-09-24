@@ -11,5 +11,12 @@ if not exist "%LAUNCHER%" (
     exit /b 1
 )
 
-C:\Python313\python.exe "%LAUNCHER%"
+REM Use venv Python
+set "PYTHON_EXE=%SCRIPT_DIR%.venv\Scripts\python.exe"
+if exist "%PYTHON_EXE%" (
+    "%PYTHON_EXE%" "%LAUNCHER%"
+) else (
+    echo [WARN] .venv not found, using system Python
+    python "%LAUNCHER%"
+)
 if errorlevel 1 pause

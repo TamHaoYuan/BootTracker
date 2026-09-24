@@ -118,7 +118,7 @@ def get_weekly_stats(req, body) -> Tuple[int, Dict]:
 @get("/api/stats/trend")
 def get_trend_stats(req, body) -> Tuple[int, Dict]:
     """获取趋势分析数据（最近 N 天）"""
-    days = body.get("days", 30)
+    days = int(body.get("days", 30))
     
     data = load_data()
     sessions = data.get("sessions", [])

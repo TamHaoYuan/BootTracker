@@ -2,7 +2,7 @@
 
 > 轻量级 Windows 桌面应用，自动记录每次开机/关机时间，提供统计分析、图表可视化与桌面浮动组件。
 
-版本 `1.0.0`  ·  端口 `18792`  ·  Python `3.10+`
+版本 `1.1.0`  ·  端口 `18792`  ·  Python `3.10+`
 
 ---
 
@@ -43,13 +43,15 @@
 | 层级 | 技术 |
 |------|------|
 | 后端 | Python 3 标准库 `http.server`，模块化路由架构 |
-| 前端 | 原生 HTML / CSS / JS（无框架），SVG 图表 |
-| 主窗口 | PyQt5 WebEngine |
+| 前端 | Vite + React 18 + TypeScript + Ant Design 5 + Zustand |
+| 主窗口 | Tauri v2（首选）/ PyQt5 WebEngine（回退） |
 | 桌面组件 | Tkinter |
-| 系统托盘 | pystray |
+| 系统托盘 | pystray + Pillow（动态图标绘制） |
 | 隧道 | cloudflared |
 | 日志 | 标准 `logging` 模块，每日轮转 |
-| 打包 | PyInstaller + 自定义安装器（7z 解压） |
+| 测试 | pytest + pytest-qt（后端）· Vitest（前端） |
+| 打包 | PyInstaller + Inno Setup / 自定义安装器 |
+| CI/CD | GitHub Actions（前端 lint/test/build + 后端 pytest） |
 
 ---
 
@@ -58,47 +60,63 @@
 ```
 BootTracker/
 ├── boot-tracker.py            # 应用入口（实例锁 → 会话 → 备份 → 服务器 → 窗口 → 托盘）
-├── index.html                 # 主界面 HTML
+├── requirements.txt           # Python 运行依赖
 ├── icon.ico                   # 应用图标
-├── installer.py               # 自定义安装器（tkinter 界面 + 7z 解压）
-├── installer.spec             # 安装器 PyInstaller 配置
-├── boot-tracker.spec          # 应用 PyInstaller 配置
-├── 开机记录-启动.bat           # 启动脚本（pythonw 优先，无控制台）
-├── 开机记录-调试.bat           # 调试启动脚本
+├── boot-tracker.spec          # PyInstaller 打包配置
+├── boot-tracker.iss           # Inno Setup 安装脚本
+├── installer.py / .spec       # 自定义安装器（tkinter + 7z）
 │
 ├── server/                    # 后端服务包
 │   ├── __init__.py            # 模块导出
 │   ├── config.py              # 配置常量（端口、路径、版本）
 │   ├── logging_config.py      # 日志配置（每日轮转 + 控制台）
 │   ├── data_store.py          # 数据存储（记录/回收站/备份/实例锁）
-│   ├── http_handler.py        # HTTP 服务器
+│   ├── http_handler.py        # HTTP 服务器 + 静态资源服务
 │   ├── settings.py            # 设置管理 + 开机自启
 │   ├── version.py             # 版本管理 + 更新检查
-│   ├── qt_window.py           # PyQt5 WebEngine 主窗口
-│   ├── tray.py                # pystray 系统托盘
+│   ├── tauri_window.py        # Tauri 窗口控制器（新版本默认）
+│   ├── tray.py                # pystray 系统托盘 + 静态 PNG 图标
 │   ├── widget.py              # Tkinter 桌面小组件
 │   ├── tunnel.py              # Cloudflare Tunnel 隧道
 │   └── routes/                # 模块化 API 路由
 │       ├── __init__.py        # 路由注册表 + 装饰器
-│       ├── data_routes.py      # 数据 CRUD
-│       ├── trash_routes.py     # 回收站
-│       ├── settings_routes.py  # 设置
-│       ├── stats_routes.py     # 统计分析
-│       ├── backup_routes.py    # 备份
+│       ├── data_routes.py     # 数据 CRUD
+│       ├── trash_routes.py    # 回收站
+│       ├── settings_routes.py # 设置
+│       ├── stats_routes.py    # 统计分析
+│       ├── backup_routes.py   # 备份
 │       ├── version_routes.py  # 版本
 │       ├── tunnel_routes.py   # 隧道
 │       └── window_routes.py   # 窗口控制
 │
-├── static/                    # 前端静态资源
-│   ├── css/
-│   │   ├── style.css          # 主样式（主题/暗色/动画/组件）
-│   │   └── utils.css          # 工具样式
-│   ├── js/
-│   │   └── app.js             # 前端逻辑
-│   └── icons/
-│       └── icons.svg          # SVG 图标集
+├── frontend/                  # 前端源码（Vite + React + TS + AntD）
+│   ├── src/
+│   │   ├── api/               # HTTP 客户端 + 类型定义
+│   │   ├── bridge/            # QWebChannel 原生桥
+│   │   ├── hooks/             # 自定义 Hooks（useBootData / useTheme）
+│   │   ├── layouts/           # 布局组件（可折叠侧栏 + 玻璃态背景）
+│   │   ├── pages/             # 页面（Dashboard / Charts / Records / Settings / Admin）
+│   │   ├── stores/            # Zustand 状态管理
+│   │   └── styles/            # tokens.css + global.css + antd-theme.ts
+│   ├── tests/                 # Vitest 单元测试
+│   ├── index.html
+│   └── vite.config.ts         # Vite 配置（dev proxy + build → dist-static/）
 │
-└── tools/                     # 工具（Inno Setup 等）
+├── tauri-app/                 # Tauri v2 桌面壳（Rust）
+│   ├── src/                   # Rust commands + lib + main
+│   ├── icons/                 # 多平台图标
+│   ├── tauri.conf.json
+│   └── Cargo.toml
+│
+├── tests/                     # pytest 后端测试
+├── scripts/                   # 构建/开发脚本
+│   ├── build.bat              # 一键构建（frontend build → tauri build → pyinstaller）
+│   └── dev.bat                # 一键开发（后端 + Vite dev server，支持 --tauri）
+│
+├── .github/workflows/ci.yml   # CI（前端 lint/test/build + 后端 pytest）
+│
+├── static/                    # 静态图标与上传目录（icon.png / uploads）
+└── deprecated/                # 旧版本已弃用文件（旧版前端 / PyQt5 / JSON 备份等）
 ```
 
 ---
@@ -108,16 +126,31 @@ BootTracker/
 ### 环境要求
 - Windows 10/11
 - Python 3.10+
+- Node.js 20+（前端开发/构建）
 
 ### 安装依赖
 
 ```bash
-pip install PyQt5 pystray
+# 后端
+pip install -r requirements.txt
+
+# 前端
+cd frontend && npm install
 ```
 
 > 隧道功能需要 `cloudflared.exe`（放置于项目根目录）
 
-### 运行
+### 开发模式
+
+```bash
+# 一键启动后端 + Vite dev server（HMR）
+scripts\dev.bat
+```
+
+- 后端 HTTP：`http://127.0.0.1:18792/`
+- 前端 Vite：`http://localhost:5173/`（代理 `/api` → 后端）
+
+### 生产运行
 
 **方式一：启动脚本（推荐）**
 
@@ -130,7 +163,7 @@ python boot-tracker.py
 ```
 
 启动后：
-- 主界面以 PyQt5 窗口打开（加载 `http://127.0.0.1:18792/`）
+- 主界面以 Tauri 窗口打开（回退到 PyQt5 WebEngine → 浏览器）
 - 系统托盘显示带进度环的图标
 - 数据文件 `boot-data.json` 自动创建于运行目录
 
@@ -138,15 +171,36 @@ python boot-tracker.py
 
 ## 打包
 
-### 打包应用本体
+### 一键构建（前端 + PyInstaller）
 
 ```bash
-pyinstaller boot-tracker.spec --noconfirm
+scripts\build.bat
+```
+
+流程：前端 `npm run build` → Vite 输出到 `dist-static/` → PyInstaller 打包
+
+### 手动分步
+
+```bash
+# 1. 前端构建
+cd frontend && npm run build    # 输出到 ../dist-static/
+
+# 2. PyInstaller 打包
+cd .. && pyinstaller boot-tracker.spec --noconfirm
 ```
 
 输出：`dist/BootTracker/开机记录.exe`（onedir 模式）
 
-### 打包安装程序
+### Inno Setup 安装程序
+
+```bash
+# 前置：已生成 dist/BootTracker/ 目录
+# 用 Inno Setup Compiler 打开 boot-tracker.iss → 编译
+```
+
+输出：`installer_output/BootTracker-Setup-1.0.0.exe`
+
+### 自定义安装器（7z 自包含）
 
 ```bash
 # 1. 生成 payload（需 7z.exe 在项目根目录）
@@ -157,8 +211,6 @@ pyinstaller installer.spec --noconfirm
 ```
 
 输出：`dist/BootTracker-Setup.exe`（单文件自包含安装包）
-
-安装器功能：自定义安装目录、桌面快捷方式、开机自启、卸载注册。
 
 ---
 
@@ -219,13 +271,26 @@ pyinstaller installer.spec --noconfirm
 
 ## 开发规范
 
-- Python 文件统一头部：`#!/usr/bin/env python3` + `# -*- coding: utf-8 -*-` + 模块文档字符串
+### 后端（Python）
+- 文件头部：`#!/usr/bin/env python3` + `# -*- coding: utf-8 -*-` + 模块文档字符串
 - 导入分组：标准库 → 第三方 → 内部模块
 - 路由使用装饰器注册（`@get` / `@post` / `@put` / `@delete`）
-- CSS 变量集中管理于 `:root`，按功能分类（`--bg-*` / `--text-*` 等）
-- CSS 按 `/* ========== 标题 ========== */` 分隔组织
 - 跨线程通信使用 `pyqtSignal`（禁用 `QTimer.singleShot` 跨线程）
 - 日志使用标准 `logging` 模块
+- 测试：`pytest tests -v`（54 用例，含 pytest-qt）
+
+### 前端（React + TypeScript）
+- 状态管理：Zustand store（`sessionStore` / `settingsStore` / `themeStore`）
+- 原生桥通信：`bridge/` 模块封装 QWebChannel Promise 化调用
+- API 客户端：`api/` 模块统一 HTTP 请求与类型定义
+- 样式：CSS 变量集中管理于 `tokens.css`（主题变体 via `data-theme` 属性）
+- 玻璃态设计：`global.css` 定义动画关键帧与 `.glass-orb` 装饰
+- 测试：`cd frontend && npm test`（Vitest）
+
+### CI/CD
+- 前端：`tsc -b` 类型检查 → `vitest` 测试 → `vite build`
+- 后端：`pytest tests -v`（`QT_QPA_PLATFORM=offscreen`）
+- 发布：tag push 时触发 `scripts/build.bat` 构建安装包
 
 ---
 

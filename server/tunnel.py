@@ -46,6 +46,7 @@ def start_tunnel(tunnel_token="", custom_domain=""):
 
     try:
         log_path = TUNNEL_LOG_FILE
+        os.makedirs(os.path.dirname(log_path), exist_ok=True)
 
         if tunnel_token:
             proc = subprocess.Popen(

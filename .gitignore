@@ -4,10 +4,21 @@ __pycache__/
 *.pyo
 *.pyd
 .pytest_cache/
+.pytest-site/
+
+# Node（frontend / tauri-widget/widget-src）
+node_modules/
+
+# Rust 构建产物（tauri-app / tauri-widget）
+target/
+
+# WebView2 运行时用户数据目录
+data/
 
 # 数据文件
-boot-data.json
-trash-data.json
+boot-data.db
+boot-data.db-shm
+boot-data.db-wal
 settings.json
 version.json
 
@@ -40,6 +51,9 @@ payload.7z
 
 # 第三方库
 lib/
+
+# 旧版本弃用文件归档
+deprecated/
 
 # 配置文件
 *.ini

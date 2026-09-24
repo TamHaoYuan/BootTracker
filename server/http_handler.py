@@ -12,9 +12,9 @@ import shutil
 import re
 import subprocess
 from http.server import HTTPServer, BaseHTTPRequestHandler
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
-from .config import HTML_FILE, APP_DIR, UPLOAD_DIR, PORT, LOG_FILE
+from .config import HTML_FILE, APP_DIR, UPLOAD_DIR, PORT
 from .logging_config import logger
 from .routes import registry
 
@@ -117,10 +117,18 @@ class RequestHandler(BaseHTTPRequestHandler):
         """处理 API 请求"""
         try:
             body = self._parse_body()
-            handler = self._find_handler(method, path)
-            
-            if handler:
-                params = _extract_path_params(path, handler.__name__.replace("_", "-"))
+            # 合并 URL 查询参数（GET 请求无 body，查询参数需手动解析）
+            query_params = _parse_url_params(path)
+            for k, v in query_params.items():
+                if len(v) == 1:
+                    body.setdefault(k, v[0])
+                else:
+                    body.setdefault(k, v)
+            result = self._find_handler(method, path)
+
+            if result:
+                handler, route_pattern = result
+                params = _extract_path_params(path, route_pattern)
                 body.update(params)
                 code, response = handler(self, body)
                 self._json_response(response, code)
@@ -129,19 +137,19 @@ class RequestHandler(BaseHTTPRequestHandler):
         except Exception as e:
             logger.error(f"API error: {e}")
             self._json_response({"error": str(e)}, 500)
-    
+
     def _find_handler(self, method: str, path: str):
-        """查找路由处理器"""
+        """查找路由处理器，返回 (handler, route_pattern) 或 None"""
         method_routes = registry._routes.get(method, {})
-        
+
         if path in method_routes:
-            return method_routes[path]
-        
+            return method_routes[path], path
+
         for route_path in method_routes:
             if '{' in route_path:
                 if self._matches_pattern(path, route_path):
-                    return method_routes[route_path]
-        
+                    return method_routes[route_path], route_path
+
         return None
     
     def _matches_pattern(self, path: str, pattern: str) -> bool:
@@ -255,9 +263,24 @@ class RequestHandler(BaseHTTPRequestHandler):
         threading.Thread(target=_do_restart, daemon=True).start()
     
     def _serve_index(self):
-        """提供首页"""
+        """提供首页 — 优先 dist-static/ 下的构建产物，否则回退旧版 index.html"""
+        # 查找顺序：1) APP_DIR/dist-static/index.html  2) HTML_FILE（根 index.html，旧版）
+        base_dir = getattr(sys, '_MEIPASS', APP_DIR) if getattr(sys, 'frozen', False) else APP_DIR
+        candidates = [
+            os.path.join(base_dir, 'dist-static', 'index.html'),
+            os.path.join(APP_DIR, 'dist-static', 'index.html'),
+            HTML_FILE,
+        ]
+        picked = None
+        for c in candidates:
+            if os.path.isfile(c):
+                picked = c
+                break
+        if picked is None:
+            self._json_response({"error": "index not found"}, 404)
+            return
         try:
-            with open(HTML_FILE, "r", encoding="utf-8") as f:
+            with open(picked, "r", encoding="utf-8") as f:
                 content = f.read()
             self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8")
@@ -267,40 +290,71 @@ class RequestHandler(BaseHTTPRequestHandler):
         except Exception as e:
             logger.error(f"serve_index error: {e}")
             self._json_response({"error": str(e)}, 500)
-    
+
+    def _find_static_path(self, rel: str) -> Optional[str]:
+        """在多个静态资源根目录里查找文件，返回首个命中的绝对路径，否则 None。
+
+        查找顺序（冻结/开发通用）：
+          1. <res_dir>/dist-static/<rel>      — 前端构建产物
+          2. <APP_DIR>/dist-static/<rel>
+          3. <res_dir>/static/<rel>           — 旧版 static/
+          4. <APP_DIR>/static/<rel>
+          5. <res_dir>/<rel>                  — 根路径（上传文件等）
+          6. <APP_DIR>/<rel>
+        """
+        res_dir = getattr(sys, '_MEIPASS', APP_DIR) if getattr(sys, 'frozen', False) else APP_DIR
+        roots = [
+            os.path.join(res_dir, 'dist-static'),
+            os.path.join(APP_DIR, 'dist-static'),
+            os.path.join(res_dir, 'static'),
+            os.path.join(APP_DIR, 'static'),
+            res_dir,
+            APP_DIR,
+        ]
+        safe_roots = {os.path.realpath(r) for r in (res_dir, APP_DIR)}
+        for root in roots:
+            candidate = os.path.realpath(os.path.join(root, rel))
+            # 路径穿越防护：candidate 必须位于某允许根目录内
+            if not any(candidate.startswith(r) for r in safe_roots):
+                continue
+            if os.path.isfile(candidate):
+                return candidate
+        return None
+
     def _serve_file(self, path: str):
-        """提供静态文件"""
+        """提供静态文件 — 从 dist-static/ 优先、static/ 回退"""
         if '?' in path:
             path = path.split('?', 1)[0]
-        
+
         rel = path.lstrip("/")
-        res_dir = getattr(sys, '_MEIPASS', APP_DIR) if getattr(sys, 'frozen', False) else APP_DIR
-        fpath = os.path.join(res_dir, rel)
-        
-        if not os.path.isfile(fpath):
-            fpath = os.path.join(APP_DIR, rel)
-        
-        real = os.path.realpath(fpath)
-        if not real.startswith(os.path.realpath(res_dir)) and not real.startswith(os.path.realpath(APP_DIR)):
-            self._json_response({"error": "forbidden"}, 403)
+        fpath = self._find_static_path(rel)
+        if fpath is None:
+            self._json_response({"error": "file not found"}, 404)
             return
-        
+
         ext = rel.rsplit(".", 1)[-1].lower() if "." in rel else ""
         mime_map = {
-            "css": "text/css", "js": "application/javascript",
+            "css": "text/css", "js": "application/javascript", "mjs": "application/javascript",
             "html": "text/html", "json": "application/json",
-            "png": "image/png", "jpg": "image/jpeg", "svg": "image/svg+xml",
-            "ico": "image/x-icon", "woff": "font/woff", "woff2": "font/woff2",
+            "png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg",
+            "svg": "image/svg+xml", "ico": "image/x-icon",
+            "woff": "font/woff", "woff2": "font/woff2", "ttf": "font/ttf",
+            "map": "application/json",
+            "wasm": "application/wasm",
         }
         ct = mime_map.get(ext, "application/octet-stream")
-        
+
         try:
             with open(fpath, "rb") as f:
                 content = f.read()
             self.send_response(200)
-            self.send_header("Content-Type", ct + "; charset=utf-8" if ext in ("css", "js", "html", "json") else ct)
+            self.send_header("Content-Type", ct + "; charset=utf-8" if ext in ("css", "js", "mjs", "html", "json") else ct)
             self.send_header("Access-Control-Allow-Origin", "*")
-            self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
+            # 静态资源带 hash（Vite 自动生成），可长缓存；HTML 与不带 hash 的则 no-cache
+            if ext in ("html", ""):
+                self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
+            else:
+                self.send_header("Cache-Control", "public, max-age=31536000, immutable")
             self.end_headers()
             self.wfile.write(content)
         except Exception:

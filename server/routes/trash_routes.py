@@ -65,3 +65,24 @@ def clear_trash(req, body) -> Tuple[int, Dict]:
     """清空回收站"""
     save_trash({"sessions": []})
     return 200, {"ok": True}
+
+
+@post("/api/trash/delete")
+def delete_from_trash(req, body) -> Tuple[int, Dict]:
+    """从回收站永久删除一条记录（不进入 boot-data，直接清除）"""
+    session_id = body.get("id")
+
+    if not session_id:
+        return 400, {"error": "missing id"}
+
+    trash = load_trash()
+    sessions = trash.get("sessions", [])
+    new_sessions = [s for s in sessions if s.get("id") != session_id]
+
+    if len(new_sessions) == len(sessions):
+        return 404, {"error": "not found"}
+
+    trash["sessions"] = new_sessions
+    save_trash(trash)
+
+    return 200, {"ok": True}

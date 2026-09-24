@@ -10,7 +10,7 @@ from ..config import PORT
 from ..tunnel import start_tunnel, stop_tunnel, _tunnel_proc
 from ..widget import start_widget, stop_widget, is_widget_running
 from ..logging_config import logger
-from . import get, put
+from . import get, post, put
 
 
 _VALID_KEYS = {
@@ -81,7 +81,8 @@ def update_settings(req, body) -> Tuple[int, Dict]:
         updates[key] = converted
     
     if not updates:
-        return 400, {"error": "no valid fields"}
+        # 无有效更新（例如提交值与现有一致），幂等返回成功，前端不需要将其视为错误
+        return 200, {"ok": True, "updated": []}
     
     if "autoStart" in updates:
         setup_autostart(enable=updates["autoStart"])
@@ -134,3 +135,31 @@ def update_settings(req, body) -> Tuple[int, Dict]:
             stop_widget()
 
     return 200, {"ok": True, "updated": list(updates.keys())}
+
+
+@post("/api/widget-toggle")
+def toggle_widget(req, body) -> Tuple[int, Dict]:
+    """翻转桌面小组件开关（实时启停），供 Rust 托盘菜单调用
+
+    返回新状态，调用方据此同步菜单勾选。
+    """
+    import threading
+    try:
+        settings = load_settings()
+        want_on = not bool(settings.get("widgetEnabled", False))
+        settings["widgetEnabled"] = want_on
+        save_settings(settings)
+
+        if want_on and not is_widget_running():
+            logger.info("[settings] widget toggled on")
+            threading.Thread(
+                target=start_widget, args=(PORT, threading.Event()), daemon=True
+            ).start()
+        elif not want_on:
+            logger.info("[settings] widget toggled off")
+            stop_widget()
+
+        return 200, {"ok": True, "widgetEnabled": want_on}
+    except Exception as e:
+        logger.error(f"toggle_widget error: {e}")
+        return 400, {"error": str(e)}

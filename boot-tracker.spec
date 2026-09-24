@@ -13,36 +13,26 @@ a = Analysis(
     binaries=[
         # 隧道功能依赖（运行时从 _RESOURCE_DIR 解析）
         ('cloudflared.exe', '.'),
+        # Tauri 主窗口可执行文件（新版本默认 UI，运行时从 APP_DIR/tauri-app 解析）
+        ('tauri-app/target/release/boot-tracker.exe', 'tauri-app/target/release'),
+        # Rust 桌面小组件可执行文件（运行时从 APP_DIR/tauri-widget 解析）
+        ('tauri-widget/target/release/boot-tracker-widget.exe', 'tauri-widget/target/release'),
     ],
     datas=[
-        ('index.html', '.'),
+        # 前端构建产物（Vite build 输出）
+        ('dist-static', 'dist-static'),
+        # 静态图标与上传目录（托盘图标、背景图）
         ('static', 'static'),
     ],
     hiddenimports=[
-        'PyQt5.QtWebEngineWidgets',
-        'PyQt5.QtWebEngineCore',
         'pystray._win32',
     ],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
     excludes=[
-        # 仅排除与 WebEngine/托盘/组件无关的大模块，减小体积
-        'PyQt5.QtBluetooth',
-        'PyQt5.QtDesigner',
-        'PyQt5.QtLocation',
-        'PyQt5.QtMultimedia',
-        'PyQt5.QtMultimediaWidgets',
-        'PyQt5.QtNfc',
-        'PyQt5.QtQuick3D',
-        'PyQt5.QtRemoteObjects',
-        'PyQt5.QtSensors',
-        'PyQt5.QtSerialPort',
-        'PyQt5.QtSql',
-        'PyQt5.QtTest',
-        'PyQt5.QtTextToSpeech',
-        'PyQt5.QtXmlPatterns',
-        'PyQt5.QtOpenGL',
+        # 旧版 PyQt5 已弃用（见 deprecated/），整体排除减小体积
+        'PyQt5',
         'test',
         'unittest',
         'pydoc',
