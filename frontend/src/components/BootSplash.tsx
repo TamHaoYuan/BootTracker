@@ -1,26 +1,25 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useThemeStore } from '../stores/themeStore';
 
+/** 系统「减少动态效果」偏好：跳过所有过渡，仅快速淡出 */
+const REDUCED_MOTION =
+  typeof matchMedia !== 'undefined' &&
+  matchMedia('(prefers-reduced-motion: reduce)').matches;
+
 /**
- * APP 启动动画：
- * 阶段1（0~0.6s）：图标居中，弹性缩放进入
- * 阶段2（0.6~1.4s）：图标左移 + 名称从右侧滑入（非线性缓出）
- * 阶段3（1.4~1.9s）：整层淡出后调用 onDone 卸载
+ * APP 启动动画（紧凑节奏，约 1.35s）：
+ * 阶段1（0~0.55s）：图标弹性缩放进入 + accent 光晕（跟随当前主题色）
+ * 阶段2（0.3~0.9s）：名称 tracking-in（模糊 + 字距收敛），accent 进度线扫过
+ * 阶段3（0.95~1.35s）：整层淡出后调用 onDone 卸载
+ * 减少动态模式下：无位移无弹性，0.4s 直接淡出
  */
 function BootSplash({ onDone }: { onDone: () => void }) {
   const { mode } = useThemeStore();
-  const [hidden, setHidden] = useState(false);
 
-  // 阶段3完成后通知父组件卸载
   useEffect(() => {
-    const t = setTimeout(() => {
-      setHidden(true);
-      onDone();
-    }, 1900);
+    const t = setTimeout(onDone, REDUCED_MOTION ? 400 : 1350);
     return () => clearTimeout(t);
   }, [onDone]);
-
-  if (hidden) return null;
 
   return (
     <div
@@ -30,30 +29,25 @@ function BootSplash({ onDone }: { onDone: () => void }) {
         inset: 0,
         zIndex: 9999,
         display: 'flex',
+        flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        background: mode === 'dark' ? '#0a0a0c' : '#f5f5f7',
-        animation: 'splashFadeOut 0.5s 1.4s var(--ease-out-expo) forwards',
+        // 不透明纯色：Mica 主题下 --bg-page 为半透明，splash 需完全遮住底层 UI
+        background: mode === 'dark' ? '#0a0a0c' : '#f8fafc',
+        animation: REDUCED_MOTION
+          ? 'splashFadeOut 0.3s 0.1s forwards'
+          : 'splashFadeOut 0.4s 0.95s var(--ease-out-expo) forwards',
       }}
     >
-      <div
-        className="boot-splash-content"
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          // 阶段2：整体左移，--splash-shift 控制偏移量
-          animation: 'splashIconLeft 0.8s 0.6s var(--ease-out-expo) forwards',
-          ['--splash-shift' as string]: '-120px',
-        }}
-      >
+      <div style={{ display: 'flex', alignItems: 'center' }}>
         <img
+          className="boot-splash-icon"
           src="/icons/icon.png"
           alt="BootTracker"
           width={56}
           height={56}
           style={{
-            // 阶段1：弹性缩放进入
-            animation: 'splashIconIn 0.6s var(--ease-spring) forwards',
+            animation: 'splashIconIn 0.55s var(--ease-spring) forwards',
           }}
         />
         <span
@@ -62,15 +56,39 @@ function BootSplash({ onDone }: { onDone: () => void }) {
             marginLeft: 14,
             fontSize: 26,
             fontWeight: 700,
-            letterSpacing: 0.5,
             color: mode === 'dark' ? '#fafafa' : '#1e293b',
-            // 阶段2：名称滑入
             opacity: 0,
-            animation: 'splashNameIn 0.8s 0.6s var(--ease-out-expo) forwards',
+            animation: 'splashNameIn 0.6s 0.3s var(--ease-out-expo) forwards',
           }}
         >
           BootTracker
         </span>
+      </div>
+
+      {/* accent 进度线：品牌色扫过，暗示加载进程 */}
+      <div
+        className="boot-splash-progress"
+        style={{
+          marginTop: 22,
+          width: 132,
+          height: 2,
+          borderRadius: 1,
+          overflow: 'hidden',
+          background: mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
+        }}
+      >
+        <div
+          className="boot-splash-progress-bar"
+          style={{
+            height: '100%',
+            borderRadius: 1,
+            background: 'var(--accent)',
+            transformOrigin: 'left',
+            animation: REDUCED_MOTION
+              ? 'splashProgress 0.3s linear forwards'
+              : 'splashProgress 1.25s var(--ease-out-expo) forwards',
+          }}
+        />
       </div>
     </div>
   );

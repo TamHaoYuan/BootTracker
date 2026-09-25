@@ -9,7 +9,7 @@ export interface WidgetData {
 const EMPTY: WidgetData = { todayCount: 0, bootTime: null, online: false };
 
 /** 监听 Tauri 后端推送的 widget-data 事件 */
-export function useWidgetData(): WidgetData {
+export function useWidgetData(): WidgetData & { countChanged: boolean } {
   const [data, setData] = useState<WidgetData>(EMPTY);
   const prevCountRef = useRef(0);
 
@@ -38,5 +38,5 @@ export function useWidgetData(): WidgetData {
   const countChanged = data.todayCount !== prevCountRef.current;
   prevCountRef.current = data.todayCount;
 
-  return { ...data, countChanged } as WidgetData & { countChanged: boolean };
+  return { ...data, countChanged };
 }

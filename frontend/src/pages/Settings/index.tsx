@@ -246,9 +246,11 @@ function Settings() {
     const prevBg = settings?.customBgImage ?? '';
     try {
       const r = await systemApi.uploadBgImage(file);
-      patch({ customBgImage: r.path });
+      // 时间戳 bust 缓存：背景图 URL 固定（bg.jpg），不换 URL 会用旧缓存图
+      const bgUrl = `${r.path}?t=${Date.now()}`;
+      patch({ customBgImage: bgUrl });
       try {
-        await settingsApi.update({ customBgImage: r.path });
+        await settingsApi.update({ customBgImage: bgUrl });
         message.success('背景图上传成功');
         options.onSuccess?.(r);
       } catch (e) {

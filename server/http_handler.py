@@ -350,11 +350,13 @@ class RequestHandler(BaseHTTPRequestHandler):
             self.send_response(200)
             self.send_header("Content-Type", ct + "; charset=utf-8" if ext in ("css", "js", "mjs", "html", "json") else ct)
             self.send_header("Access-Control-Allow-Origin", "*")
-            # 静态资源带 hash（Vite 自动生成），可长缓存；HTML 与不带 hash 的则 no-cache
-            if ext in ("html", ""):
-                self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
-            else:
+            # 缓存策略：仅 Vite 构建产物（assets/，文件名带内容 hash）可长缓存；
+            # 其余（HTML、上传背景图等原地覆盖的无 hash 文件）一律 no-cache，
+            # 否则 /static/uploads/bg.jpg 这类固定 URL 会被 immutable 钉死旧图
+            if rel.startswith("assets/") and ext not in ("html", ""):
                 self.send_header("Cache-Control", "public, max-age=31536000, immutable")
+            else:
+                self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
             self.end_headers()
             self.wfile.write(content)
         except Exception:

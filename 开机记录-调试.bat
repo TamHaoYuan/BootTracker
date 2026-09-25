@@ -11,12 +11,12 @@ if not exist "%LAUNCHER%" (
     exit /b 1
 )
 
-REM Use venv Python
+REM Use venv Python; --debug: do NOT record boot session
 set "PYTHON_EXE=%SCRIPT_DIR%.venv\Scripts\python.exe"
 if exist "%PYTHON_EXE%" (
-    "%PYTHON_EXE%" "%LAUNCHER%"
+    "%PYTHON_EXE%" "%LAUNCHER%" --debug
 ) else (
     echo [WARN] .venv not found, using system Python
-    python "%LAUNCHER%"
+    python "%LAUNCHER%" --debug
 )
 if errorlevel 1 pause

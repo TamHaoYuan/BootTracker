@@ -30,6 +30,8 @@ export interface AppSettings {
   widgetEnabled: boolean;
   widgetPosition: string;
   appMode: 'dark' | 'light';
+  /** 主题名（purple/blue/.../mica），前端为事实源，同步到后端供小组件取色 */
+  appTheme?: string;
   // 后端额外返回的字段
   _autoStartRegistered?: boolean;
 }

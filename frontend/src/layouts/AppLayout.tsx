@@ -13,6 +13,7 @@ import {
 } from '@ant-design/icons';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useThemeStore } from '../stores/themeStore';
+import { useUiStore } from '../stores/uiStore';
 import { useTheme } from '../hooks/useTheme';
 import { useSettingsStore } from '../stores/settingsStore';
 import { dataApi } from '../api/data';
@@ -96,8 +97,9 @@ function AppLayout() {
   const { toggleMode } = useTheme();
   const { settings } = useSettingsStore();
 
-  // 桌面：自动折叠 + 悬浮展开
-  const [collapsed, setCollapsed] = useState(true);
+  // 桌面：折叠状态跨会话记住（uiStore）+ 悬浮展开
+  const collapsed = useUiStore((s) => s.sidebarCollapsed);
+  const setCollapsed = useUiStore((s) => s.setSidebarCollapsed);
   const [hoverExpanded, setHoverExpanded] = useState(false);
   const effectiveCollapsed = collapsed && !hoverExpanded;
 

@@ -23,6 +23,7 @@ _DEFAULT_SETTINGS = {
     "widgetEnabled": False,
     "widgetPosition": "",
     "appMode": "dark",
+    "appTheme": "mica",
 }
 
 

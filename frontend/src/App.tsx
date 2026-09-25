@@ -38,6 +38,10 @@ function App() {
         }
         // 拉到 settings 后写入 settingsStore，便于 Layout 使用 customBgImage、defaultChartType 等
         useSettingsStore.getState().setSettings(s);
+        // 主题以前端（localStorage）为事实源，启动时回写后端供小组件同步取色
+        if (s.appTheme !== theme) {
+          settingsApi.update({ appTheme: theme }).catch(() => {});
+        }
       } catch {
         // 后端不可用时保留前端持久化值
       }

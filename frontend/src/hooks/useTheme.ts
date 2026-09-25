@@ -44,6 +44,10 @@ export function useTheme() {
     (newTheme: ThemeName) => {
       setTheme(newTheme);
       applyThemeToDom(mode, newTheme);
+      // 同步到后端 settings.appTheme：桌面小组件据此跟随主题取色
+      settingsApi.update({ appTheme: newTheme }).catch((e) => {
+        console.warn('[theme] persist appTheme failed:', e);
+      });
     },
     [setTheme, mode],
   );

@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>优秀应用 UI 设计案例库 · 2026</title>
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel2:#1e222b; --border:#2a2f3a;
+    --text:#e8eaf0; --muted:#9aa3b2; --accent:#5b8cff; --green:#4ade80;
+    --amber:#fbbf24; --red:#f87171; --purple:#a78bfa;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg);color:var(--text);font-family:"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;padding:32px 40px;line-height:1.6}
+  header{margin-bottom:28px}
+  h1{font-size:26px;font-weight:700;letter-spacing:.5px}
+  header p{color:var(--muted);font-size:14px;margin-top:6px}
+  .stats{display:flex;gap:12px;margin-top:16px;flex-wrap:wrap}
+  .stat{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:8px 16px;font-size:13px;color:var(--muted)}
+  .stat b{color:var(--text);font-size:16px;margin-right:4px}
+  .filters{display:flex;gap:8px;margin:24px 0 20px;flex-wrap:wrap}
+  .filters button{background:var(--panel);border:1px solid var(--border);color:var(--muted);padding:6px 14px;border-radius:20px;font-size:13px;cursor:pointer;transition:.15s}
+  .filters button:hover{color:var(--text)}
+  .filters button.active{background:var(--accent);border-color:var(--accent);color:#fff}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:18px}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:12px;overflow:hidden;display:flex;flex-direction:column;transition:.15s}
+  .card:hover{border-color:var(--accent);transform:translateY(-2px)}
+  .thumb{height:150px;padding:14px;overflow:hidden;position:relative}
+  .tag{position:absolute;top:10px;right:10px;font-size:11px;padding:3px 10px;border-radius:12px;background:rgba(0,0,0,.55);backdrop-filter:blur(4px);border:1px solid rgba(255,255,255,.12)}
+  .body{padding:14px 16px 16px;flex:1;display:flex;flex-direction:column}
+  .body h3{font-size:16px;margin-bottom:4px}
+  .body .dev{font-size:12px;color:var(--muted);margin-bottom:8px}
+  .body p{font-size:13px;color:#c3cad6;flex:1}
+  .steal{font-size:12px;color:var(--green);margin-top:10px;padding-top:10px;border-top:1px dashed var(--border)}
+  .steal::before{content:"⌘ 可偷师：";color:var(--muted)}
+  a.link{font-size:12px;color:var(--accent);text-decoration:none;margin-top:8px;display:inline-block}
+  footer{margin-top:32px;color:var(--muted);font-size:12px;border-top:1px solid var(--border);padding-top:16px}
+  footer a{color:var(--accent);text-decoration:none}
+
+  /* ---- CSS 迷你风格预览 ---- */
+  .prev{border-radius:8px;height:100%;width:100%;overflow:hidden;display:flex;font-size:9px}
+  .p-linear{background:#0d0e12;flex-direction:column;gap:6px;padding:10px}
+  .p-linear .row{background:#1a1c22;height:12px;border-radius:3px;display:flex;align-items:center;gap:5px;padding:0 6px}
+  .p-linear .dot{width:6px;height:6px;border-radius:2px;background:#3b4048}
+  .p-linear .bar{height:3px;background:#2c2f36;border-radius:2px;flex:1}
+  .p-linear .accent{background:#5e6ad2}
+  .p-stripe{background:#fff;flex-direction:column;gap:6px;padding:10px}
+  .p-stripe .kpi{display:flex;gap:6px}
+  .p-stripe .k{flex:1;background:#f6f9fc;border:1px solid #e6ebf1;border-radius:5px;height:30px}
+  .p-stripe table{width:100%;border-collapse:collapse;background:#fff}
+  .p-stripe td{border-top:1px solid #e6ebf1;height:11px;color:#4f566b}
+  .p-stripe .spark{color:#635bff}
+  .p-vercel{background:#000;flex-direction:column;gap:8px;padding:12px;align-items:flex-start}
+  .p-vercel .l{height:5px;border-radius:3px;background:#333}
+  .p-vercel .ok{background:#000;color:#50e3c2;border:1px solid #50e3c2;border-radius:10px;font-size:8px;padding:1px 8px}
+  .p-headspace{background:#f5b841;flex-direction:column;align-items:center;justify-content:center;gap:8px}
+  .p-headspace .face{width:44px;height:44px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;font-size:24px}
+  .p-headspace .pill{background:#fff;border-radius:12px;font-size:9px;padding:3px 12px;color:#333;font-weight:600}
+  .p-grug{background:#efe6d4;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:10px;text-align:center}
+  .p-grug .cave{font-size:26px}
+  .p-grug .txt{font-family:Georgia,serif;font-size:11px;color:#5b4a32;font-style:italic;max-width:85%}
+  .p-mercury{background:#f7f5f1;flex-direction:column;gap:8px;padding:12px}
+  .p-mercury .big{font-size:20px;color:#1a1a1a;font-weight:700}
+  .p-mercury .r{height:9px;background:#fff;border:1px solid #e8e2d8;border-radius:4px}
+  .p-mercury .g{background:#0f766e;border-radius:10px;font-size:8px;color:#fff;padding:2px 10px;align-self:flex-start}
+  .p-tide{background:linear-gradient(180deg,#0b2545 0%,#13315c 55%,#1d4e89 100%);flex-direction:column;justify-content:flex-end;padding:8px;gap:4px}
+  .p-tide .wv{height:10px;border-radius:6px 6px 0 0;background:rgba(94,197,255,.25);border-top:2px solid #5ec5ff}
+  .p-nba{background:#1a0d2e;flex-direction:row;gap:6px;padding:10px;align-items:center}
+  .p-nba .v{flex:1;background:rgba(139,92,246,.18);border:1px solid rgba(139,92,246,.45);border-radius:6px;height:100%;display:flex;align-items:center;justify-content:center;color:#c4b5fd;font-size:8px}
+  .p-nba .v.s{flex:.5}
+  .p-claude{background:#faf9f5;flex-direction:column;gap:8px;padding:12px}
+  .p-claude .msg{background:#f0eee6;border-radius:10px;padding:5px 9px;font-size:9px;color:#3d3929;max-width:80%}
+  .p-claude .msg.me{background:#da7756;color:#fff;align-self:flex-end}
+  .p-guitar{background:#111;flex-direction:column;gap:6px;padding:12px;align-items:center;justify-content:center}
+  .p-guitar .fb{width:70%;height:70%;border:2px solid #d4a373;border-radius:6px;display:flex;flex-direction:column;justify-content:space-evenly;padding:4px 8px}
+  .p-guitar .str{height:1px;background:#d4a373}
+  .p-plausible{background:#fff;flex-direction:column;gap:6px;padding:12px}
+  .p-plausible .n{font-size:18px;font-weight:700;color:#111}
+  .p-plausible .chart{flex:1;display:flex;align-items:flex-end;gap:3px}
+  .p-plausible .b{background:#818cf8;border-radius:2px 2px 0 0;flex:1}
+  .p-attio{background:#f8f8f7;flex-direction:column;gap:6px;padding:10px}
+  .p-attio .ai{background:linear-gradient(90deg,#eef2ff,#fdf4ff);border:1px solid #c7d2fe;border-radius:6px;padding:4px 8px;font-size:8px;color:#4338ca}
+  .p-attio .r{background:#fff;border:1px solid #e5e5e3;border-radius:5px;height:14px}
+  .p-structured{background:#12131a;flex-direction:column;gap:4px;padding:10px}
+  .p-structured .tl{border-left:2px solid #34394a;padding-left:8px;display:flex;flex-direction:column;gap:4px}
+  .p-structured .t{background:#1c1f2a;border-radius:5px;height:16px}
+  .p-structured .now{border-color:#5b8cff}
+</style>
+</head>
+<body>
+<header>
+  <h1>优秀应用 UI 设计案例库 · 2026</h1>
+  <p>Apple 设计大奖 · Web Dashboard 标杆 · 移动端真实产品模式 —— 每张卡片附「可偷师」要点，CSS 迷你预览示意各产品的视觉风格。</p>
+  <div class="stats">
+    <div class="stat"><b>18</b>精选案例</div>
+    <div class="stat"><b>3</b>维度（获奖/桌面/移动）</div>
+    <div class="stat"><b>6</b>Apple 设计大奖 App</div>
+    <div class="stat">整理于 2026-09</div>
+  </div>
+</header>
+
+<div class="filters" id="filters">
+  <button class="active" data-f="all">全部</button>
+  <button data-f="ada">Apple 设计大奖</button>
+  <button data-f="dash">Web Dashboard</button>
+  <button data-f="mobile">移动端</button>
+</div>
+
+<div class="grid" id="grid">
+
+  <!-- Linear -->
+  <div class="card" data-c="dash">
+    <div class="thumb"><div class="prev p-linear">
+      <div class="row"><span class="dot accent"></span><span class="bar"></span></div>
+      <div class="row"><span class="dot"></span><span class="bar"></span></div>
+      <div class="row"><span class="dot"></span><span class="bar" style="width:60%"></span></div>
+      <div class="row"><span class="dot"></span><span class="bar" style="width:75%"></span></div>
+      <div class="row"><span class="dot"></span><span class="bar" style="width:45%"></span></div>
+      <span class="tag" style="color:#aab2ff">深色优先</span>
+    </div></div>
+    <div class="body"><h3>Linear</h3><div class="dev">项目管理 · Web/桌面</div>
+      <p>深色优先的力量工具标准：近单色表面、单一强调色、低对比边框、36px 紧凑行、键盘优先，交互 &lt;100ms。</p>
+      <div class="steal">层级靠字重与间距而非边框；同屏只展示一层细节。</div>
+      <a class="link" href="https://linear.app" target="_blank">linear.app ↗</a></div>
+  </div>
+
+  <!-- Stripe -->
+  <div class="card" data-c="dash">
+    <div class="thumb"><div class="prev p-stripe">
+      <div class="kpi"><div class="k"></div><div class="k"></div><div class="k"></div></div>
+      <table><tr><td>ch_3Pq…A1</td><td class="spark">▮▮▁▃▅</td><td>$42.00</td></tr>
+      <tr><td>ch_3Pq…B2</td><td class="spark">▅▃▁▮▂</td><td>$18.50</td></tr>
+      <tr><td>ch_3Pq…C3</td><td class="spark">▂▄▆▂▮</td><td>$96.00</td></tr></table>
+      <span class="tag" style="color:#4f566b">金融数据</span>
+    </div></div>
+    <div class="body"><h3>Stripe Dashboard</h3><div class="dev">支付 · Web</div>
+      <p>表格即主界面：右对齐数字、tabular figures、内联 sparkline、下钻不失位。首屏 4 张 KPI 卡 + 1 个核心图表。</p>
+      <div class="steal">图表只做趋势摘要，表格才是真相；语义色状态胶囊。</div>
+      <a class="link" href="https://stripe.com/dashboard" target="_blank">stripe.com ↗</a></div>
+  </div>
+
+  <!-- Vercel -->
+  <div class="card" data-c="dash">
+    <div class="thumb"><div class="prev p-vercel">
+      <div class="l" style="width:55%"></div><span class="ok">● Ready</span>
+      <div class="l" style="width:38%"></div><div class="l" style="width:46%"></div><div class="l" style="width:30%"></div>
+      <span class="tag" style="color:#71717a">极简单色</span>
+    </div></div>
+    <div class="body"><h3>Vercel</h3><div class="dev">开发者平台 · Web</div>
+      <p>黑白设计系统，层级完全来自留白与字重，色彩只表达状态。部署摘要置顶、日志一击即达。</p>
+      <div class="steal">空状态设计占仪表盘"感知精致度"的 80%。</div>
+      <a class="link" href="https://vercel.com/dashboard" target="_blank">vercel.com ↗</a></div>
+  </div>
+
+  <!-- Attio -->
+  <div class="card" data-c="dash">
+    <div class="thumb"><div class="prev p-attio">
+      <div class="ai">✦ AI 摘要：本周 3 个高意向商机，建议跟进 Acme…</div>
+      <div class="r"></div><div class="r"></div><div class="r" style="width:70%"></div>
+      <span class="tag" style="color:#4338ca">AI 原生</span>
+    </div></div>
+    <div class="body"><h3>Attio</h3><div class="dev">AI 原生 CRM · Web</div>
+      <p>2026 趋势代表：AI 摘要作为一等组件（结构化卡片、建议动作、生成式查询），而非悬浮聊天挂件。</p>
+      <div class="steal">AI 输出设计成界面本身，明示 AI 能处理什么、什么交给人工。</div>
+      <a class="link" href="https://attio.com" target="_blank">attio.com ↗</a></div>
+  </div>
+
+  <!-- Mercury -->
+  <div class="card" data-c="dash">
+    <div class="thumb"><div class="prev p-mercury">
+      <div class="big">$1,284,902</div><span class="g">RUNWAY 18 MO</span>
+      <div class="r" style="width:90%"></div><div class="r" style="width:60%"></div>
+      <span class="tag" style="color:#78716c">编辑感</span>
+    </div></div>
+    <div class="body"><h3>Mercury</h3><div class="dev">金融科技 · Web</div>
+      <p>柔和配色 + 编辑排版级细节，让银行数据显得"高级"。首屏只放一个数字：余额或 runway。</p>
+      <div class="steal">fintech 的信任感来自设计，不是功能堆砌；首屏单指标。</div>
+      <a class="link" href="https://mercury.com" target="_blank">mercury.com ↗</a></div>
+  </div>
+
+  <!-- Plausible -->
+  <div class="card" data-c="dash">
+    <div class="thumb"><div class="prev p-plausible">
+      <div class="n">12,480 <span style="font-size:8px;color:#16a34a">▲ 8%</span></div>
+      <div class="chart"><div class="b" style="height:30%"></div><div class="b" style="height:55%"></div><div class="b" style="height:42%"></div><div class="b" style="height:70%"></div><div class="b" style="height:88%"></div><div class="b" style="height:60%"></div><div class="b" style="height:95%"></div></div>
+      <span class="tag" style="color:#6366f1">无侧边栏</span>
+    </div></div>
+    <div class="body"><h3>Plausible</h3><div class="dev">网站分析 · Web</div>
+      <p>激进的单页仪表盘，连侧边栏都没有——证明窄场景下连仪表盘的默认范式都可以打破。真实公开可查。</p>
+      <div class="steal">图表克制：一个主指标 + 少量趋势，其余数字呈现。</div>
+      <a class="link" href="https://plausible.io" target="_blank">plausible.io ↗</a></div>
+  </div>
+
+  <!-- Headspace -->
+  <div class="card" data-c="mobile">
+    <div class="thumb"><div class="prev p-headspace">
+      <div class="face">🙂</div><div class="pill">Breathe in… 3s</div>
+      <span class="tag" style="color:#7c5e00">Mobbin 年度 iOS</span>
+    </div></div>
+    <div class="body"><h3>Headspace</h3><div class="dev">冥想健康 · iOS</div>
+      <p>Mobbin 用户票选年度 iOS 应用："平静而不失清晰的大师课"。笑脸吉祥物 + 高饱和色板，在一片素净的 wellness 品类中脱颖而出。</p>
+      <div class="steal">品牌符号（吉祥物/色彩）建立记忆点，同时不牺牲信息层级。</div>
+      <a class="link" href="https://www.headspace.com" target="_blank">headspace.com ↗</a></div>
+  </div>
+
+  <!-- Airbnb -->
+  <div class="card" data-c="mobile">
+    <div class="thumb"><div class="prev p-linear" style="background:#fff">
+      <div class="row" style="background:#f7f7f7;color:#222;border-radius:10px"><span style="padding:0 6px"> searchBar 🔍</span></div>
+      <div class="row" style="background:#f7f7f7;height:40px;border-radius:12px"></div>
+      <div class="row" style="background:#f7f7f7;height:40px;border-radius:12px"></div>
+      <span class="tag" style="color:#444">动效即原则</span>
+    </div></div>
+    <div class="body"><h3>Airbnb</h3><div class="dev">旅行预订 · Web/移动</div>
+      <p>Mobbin 年度 Web 应用：把动效当作产品原则，产品范围大幅扩张后仍保持全局一致性。</p>
+      <div class="steal">动效要有统一语法（时长/缓动/触发），一致性比华丽更重要。</div>
+      <a class="link" href="https://www.airbnb.com" target="_blank">airbnb.com ↗</a></div>
+  </div>
+
+  <!-- Claude -->
+  <div class="card" data-c="mobile">
+    <div class="thumb"><div class="prev p-claude">
+      <div class="msg">帮我总结这份报告的要点</div>
+      <div class="msg me">好的，以下是要点…</div>
+      <div class="msg me" style="width:55%;height:26px"></div>
+      <span class="tag" style="color:#3d3929">年度创新者</span>
+    </div></div>
+    <div class="body"><h3>Claude</h3><div class="dev">AI 助手 · 全平台</div>
+      <p>Mobbin 年度创新者："不为移动端做减法"，完整功能装进极简界面——移动端同样承载专业工作流。</p>
+      <div class="steal">移动端不是阉割版；极简外壳 + 完整能力可以共存。</div>
+      <a class="link" href="https://claude.ai" target="_blank">claude.ai ↗</a></div>
+  </div>
+
+  <!-- Structured -->
+  <div class="card" data-c="mobile">
+    <div class="thumb"><div class="prev p-structured">
+      <div class="tl now"><div class="t" style="border-left:2px solid #5b8cff"></div><div class="t"></div></div>
+      <div class="tl"><div class="t"></div><div class="t"></div></div>
+      <span class="tag" style="color:#9db4ff">时间轴</span>
+    </div></div>
+    <div class="body"><h3>Structured</h3><div class="dev">日程时间轴 · iOS/ADA 入围</div>
+      <p>Apple 设计大奖入围。时间轴 + 卡片的渐进披露，把一天的任务变成可视化的"时间画布"。</p>
+      <div class="steal">记录/打卡类信息的时间轴可视化（对 BootTracker 场景直接可借鉴）。</div>
+      <a class="link" href="https://structuredapp.com" target="_blank">structuredapp.com ↗</a></div>
+  </div>
+
+  <!-- grug -->
+  <div class="card" data-c="ada">
+    <div class="thumb"><div class="prev p-grug">
+      <div class="cave">🪨</div>
+      <div class="txt">"walking grug find breakthrough… sitting grug find nothing"</div>
+      <span class="tag" style="color:#5b4a32">乐趣横生</span>
+    </div></div>
+    <div class="body"><h3>grug</h3><div class="dev">Ocho · 荷兰 · ADA 2026 获奖App</div>
+      <p>肯定语应用，手绘原始风界面 + 每日"新石器时代碎念"。一个极简想法做到极致。</p>
+      <div class="steal">单点体验 + 人格化文案，比功能堆叠更让人记住。</div>
+      <a class="link" href="https://apps.apple.com/cn/ipad/story/id1896606452" target="_blank">ADA 官方故事 ↗</a></div>
+  </div>
+
+  <!-- Guitar Wiz -->
+  <div class="card" data-c="ada">
+    <div class="thumb"><div class="prev p-guitar">
+      <div class="fb"><div class="str"></div><div class="str"></div><div class="str"></div><div class="str"></div></div>
+      <span class="tag" style="color:#d4a373">多元包容</span>
+    </div></div>
+    <div class="body"><h3>Guitar Wiz</h3><div class="dev">Bijoy Thangaraj · 印度 · 个人开发者</div>
+      <p>ADA 多元包容奖。VoiceOver 语音指法指导、动态字体、增强对比度、不以颜色区分——无障碍是内核而非补丁。</p>
+      <div class="steal">把无障碍（对比度、字号、非颜色信息编码）做进设计系统第一层。</div>
+      <a class="link" href="https://nr.apple.com/DE4P2G6wh5" target="_blank">Apple 新闻稿 ↗</a></div>
+  </div>
+
+  <!-- NBA -->
+  <div class="card" data-c="ada">
+    <div class="thumb"><div class="prev p-nba">
+      <div class="v">📺 LIVE</div><div class="v s">📊</div><div class="v s">3D</div>
+      <span class="tag" style="color:#c4b5fd">创新思维</span>
+    </div></div>
+    <div class="body"><h3>NBA (Vision Pro)</h3><div class="dev">NBA Media Ventures · 美国 · ADA 获奖</div>
+      <p>空间计算 UI 的第一批成熟范式：5 场同看、悬浮实时数据榜、3D 球场桌面模式、空间音频 + 沉浸视频。</p>
+      <div class="steal">多任务信息层的空间布局思路，可迁移到多窗口桌面小组件设计。</div>
+      <a class="link" href="https://www.nba.com" target="_blank">nba.com ↗</a></div>
+  </div>
+
+  <!-- Tide Guide -->
+  <div class="card" data-c="ada">
+    <div class="thumb"><div class="prev p-tide">
+      <div class="wv" style="width:60%;margin-left:10%"></div><div class="wv" style="width:75%;margin-left:4%"></div><div class="wv" style="width:50%;margin-right:8%"></div>
+      <span class="tag" style="color:#7cc7ff">视觉图像</span>
+    </div></div>
+    <div class="body"><h3>Tide Guide</h3><div class="dev">Condor Digital · 美国 · ADA 获奖</div>
+      <p>视觉与图形奖：精致的潮汐图表绘制、统一主题、高品质动画。数据可视化美学标杆。</p>
+      <div class="steal">时间序列图表的美化：渐变水体、曲线节奏、主题一致性。</div>
+      <a class="link" href="https://nr.apple.com/DE4P2G6wh5" target="_blank">Apple 新闻稿 ↗</a></div>
+  </div>
+
+  <!-- Viator -->
+  <div class="card" data-c="mobile">
+    <div class="thumb"><div class="prev p-stripe">
+      <div class="kpi"><div class="k" style="display:flex;align-items:center;justify-content:center;color:#0e5c3f;font-size:8px">✓ 含接送</div><div class="k" style="display:flex;align-items:center;justify-content:center;color:#0e5c3f;font-size:8px">✓ 免费取消</div><div class="k" style="display:flex;align-items:center;justify-content:center;color:#0e5c3f;font-size:8px">✓ 导游</div></div>
+      <div class="k" style="height:34px;display:flex;align-items:center;justify-content:center;color:#635bff;font-weight:700">查看预订 →</div>
+      <span class="tag" style="color:#4f566b">信任脚手架</span>
+    </div></div>
+    <div class="body"><h3>Viator</h3><div class="dev">旅行预订 · 移动端（Mobbin 收录）</div>
+      <p>付款前明确"接下来会发生什么"；费用包含/不包含透明列出，降低预订焦虑与流失。</p>
+      <div class="steal">CTA 文案降低恐惧："查看预订"好过"继续"，"确认信息"好过"提交"。</div>
+      <a class="link" href="https://www.viator.com" target="_blank">viator.com ↗</a></div>
+  </div>
+
+  <!-- Alan -->
+  <div class="card" data-c="mobile">
+    <div class="thumb"><div class="prev p-mercury" style="background:#f4efe8">
+      <div class="big" style="font-size:11px;color:#1f7a68">"Our team is reviewing your documents with love"</div>
+      <div class="r" style="background:#fff;border-color:#e5dccb"></div><div class="r" style="width:50%;background:#fff;border-color:#e5dccb"></div>
+      <span class="tag" style="color:#8a7a5c">品牌语调</span>
+    </div></div>
+    <div class="body"><h3>Alan</h3><div class="dev">数字健康保险 · 法国</div>
+      <p>在强监管的保险品类里把术语变成有人味的话；康复课程命名为 The Beast / The Panther，吉祥物 + 积分做游戏化。</p>
+      <div class="steal">"冷"品类（保险/政务/工具）用品牌语调和温度制造差异化。</div>
+      <a class="link" href="https://alan.com" target="_blank">alan.com ↗</a></div>
+  </div>
+
+  <!-- MyWisdom -->
+  <div class="card" data-c="mobile">
+    <div class="thumb"><div class="prev p-mercury" style="background:#ece5d8">
+      <div class="big" style="font-size:13px;color:#2f4f3e">今日护理 · 14:00 服药 ✓</div>
+      <div class="r" style="height:22px;background:#fbf7f0;border-color:#d9cfbc"></div><div class="r" style="height:22px;width:70%;background:#fbf7f0;border-color:#d9cfbc"></div>
+      <span class="tag" style="color:#4f6b58">适老化</span>
+    </div></div>
+    <div class="body"><h3>MyWisdom</h3><div class="dev">家庭护理 · UX Design Awards 2026 提名</div>
+      <p>医疗场景弃用冷白蓝，改用柔和米色 + 深绿；护理记录大字号卡片，老人也能看清。</p>
+      <div class="steal">克制的配色让焦虑场景变温和；大字号卡片 = 适老化不等于丑。</div>
+      <a class="link" href="https://www.uweb.net.cn/zhishiku/wangyeUIsheji/37737.html" target="_blank">案例赏析来源 ↗</a></div>
+  </div>
+
+  <!-- Is This Seat Taken? -->
+  <div class="card" data-c="ada">
+    <div class="thumb"><div class="prev p-headspace" style="background:#ffd166">
+      <div class="face" style="border-radius:8px">🚌</div><div class="pill" style="border-radius:20px">🧑🧕 👩‍🦱 ❓🪑</div>
+      <span class="tag" style="color:#7a5c00">趣味游戏</span>
+    </div></div>
+    <div class="body"><h3>Is This Seat Taken?</h3><div class="dev">Poti Poti Studio · 西班牙 · ADA 获奖游戏</div>
+      <p>卡通风逻辑解谜：为挑剔乘客安排座位。俏皮交互元素藏在场景和界面本身里，彩蛋不断。</p>
+      <div class="steal">"界面本身可玩"——微交互彩蛋提升留存与口碑。</div>
+      <a class="link" href="https://nr.apple.com/DE4P2G6wh5" target="_blank">Apple 新闻稿 ↗</a></div>
+  </div>
+
+</div>
+
+<footer>
+  案例来源：Apple Design Awards 2026 · Mobbin Awards · Mobbin 月度追踪（CoolCuration）· AdminLTE / 925 Studios / Shaheer Malik 2026 Dashboard 盘点 · UX Design Awards 2026。<br>
+  详见 <a href="cases/01-apple-design-award-2026.md">cases/01</a> · <a href="cases/02-web-dashboard.md">cases/02</a> · <a href="cases/03-mobile-app-patterns.md">cases/03</a>。迷你预览为 CSS 风格示意，非官方截图。
+</footer>
+
+<script>
+  const btns=document.querySelectorAll('#filters button');
+  btns.forEach(b=>b.onclick=()=>{
+    btns.forEach(x=>x.classList.remove('active'));b.classList.add('active');
+    const f=b.dataset.f;
+    document.querySelectorAll('.card').forEach(c=>{
+      c.style.display=(f==='all'||c.dataset.c===f)?'':'none';
+    });
+  });
+</script>
+</body>
+</html>

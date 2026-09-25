@@ -76,28 +76,35 @@
   animation: riseIn 0.5s var(--ease-out-expo) both;
 }
 
-/* ========== APP 启动动画（图标居中 → 左移 + 名称） ========== */
-/* 阶段1：图标从透明缩放进入并居中（弹性过冲） */
+/* ========== APP 启动动画（图标弹入 + 名称 tracking-in + accent 进度线） ========== */
+/* 图标弹性缩放进入，附随当前主题 accent 光晕 */
 @keyframes splashIconIn {
   0% { opacity: 0; transform: scale(0.6); }
   60% { opacity: 1; transform: scale(1.08); }
   100% { opacity: 1; transform: scale(1); }
 }
-/* 阶段2：图标从居中位置左移到最终位置（非线性缓出） */
-@keyframes splashIconLeft {
-  0% { transform: translateX(0); }
-  100% { transform: translateX(var(--splash-shift, -120px)); }
+.boot-splash-icon {
+  filter: drop-shadow(0 0 18px rgba(var(--accent-rgb), 0.35));
 }
-/* 阶段2：名称从透明 + 右侧偏移滑入（非线性缓出） */
+/* 名称 tracking-in：模糊 + 字距收敛；进度线 scaleX 扫过 */
 @keyframes splashNameIn {
-  0% { opacity: 0; transform: translateX(24px); }
-  50% { opacity: 1; }
-  100% { opacity: 1; transform: translateX(0); }
+  0% { opacity: 0; letter-spacing: 6px; filter: blur(4px); }
+  100% { opacity: 1; letter-spacing: 0.5px; filter: blur(0); }
 }
-/* 阶段3：整层淡出 */
+@keyframes splashProgress {
+  0% { transform: scaleX(0); }
+  100% { transform: scaleX(1); }
+}
+/* 整层淡出；减少动态偏好时子元素动画瞬时完成 */
 @keyframes splashFadeOut {
   0% { opacity: 1; }
   100% { opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .boot-splash-overlay * {
+    animation-duration: 0.01s !important;
+    animation-delay: 0s !important;
+  }
 }
 
 /* ========== 动画延迟工具类（非线性缓动） ========== */
@@ -469,3 +476,181 @@ body.light-mode .ant-table-thead > tr > th {
   /* 窄屏隐藏装饰球，避免性能影响 */
   .glass-orb { display: none; }
 }
+
+/* ========== 设计系统基座（源自 ui-design-cases 设计指南） ========== */
+
+/* Stripe 表格规范：数字等宽对齐，列不抖动 */
+.tnum {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
+}
+.ant-statistic-content-value {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Guitar Wiz 无障碍：键盘焦点全局可见（仅 :focus-visible，不影响鼠标点击） */
+:focus-visible {
+  outline: 2px solid rgba(var(--accent-rgb), 0.65);
+  outline-offset: 2px;
+}
+
+/* 状态胶囊：低饱和底 + 高饱和字（Stripe 表格模式） */
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 1px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  line-height: 20px;
+  white-space: nowrap;
+}
+.status-pill .pill-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.status-pill.pill-success {
+  background: rgba(var(--text-success-rgb), 0.12);
+  color: var(--text-success);
+}
+.status-pill.pill-success .pill-dot { background: var(--text-success); }
+.status-pill.pill-accent {
+  background: rgba(var(--accent-rgb), 0.14);
+  color: var(--accent-light);
+}
+.status-pill.pill-accent .pill-dot {
+  background: var(--accent);
+  animation: breathe 2.4s ease-in-out infinite;
+}
+.status-pill.pill-muted {
+  background: rgba(var(--text-muted-rgb), 0.12);
+  color: var(--text-muted);
+}
+.status-pill.pill-muted .pill-dot { background: var(--text-muted); }
+.status-pill.pill-danger {
+  background: rgba(var(--text-danger-rgb), 0.12);
+  color: var(--text-danger);
+}
+.status-pill.pill-danger .pill-dot { background: var(--text-danger); }
+
+/* KPI 趋势行：箭头 + 颜色双编码（色弱可读） */
+.kpi-trend {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.kpi-trend.trend-up { color: var(--text-success); }
+.kpi-trend.trend-down { color: var(--text-danger); }
+.kpi-trend.trend-flat { color: var(--text-muted); }
+
+/* 空状态（Vercel：空状态占感知精致度 80%） */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 48px 24px;
+  text-align: center;
+}
+.empty-state .empty-icon {
+  font-size: 36px;
+  color: var(--text-disabled);
+  margin-bottom: 6px;
+}
+.empty-state .empty-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+.empty-state .empty-desc {
+  font-size: 13px;
+  color: var(--text-muted);
+  max-width: 360px;
+  line-height: 1.7;
+}
+.empty-state .empty-action { margin-top: 12px; }
+
+/* Structured 时间轴（当日分组 + 当前时段 accent 高亮） */
+.tl-day-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 10px 0 8px;
+}
+.tl-day-date {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.tl-day-sum {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.tl-list {
+  position: relative;
+  margin-left: 5px;
+  padding-left: 22px;
+  border-left: 2px solid var(--border-muted);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-bottom: 4px;
+}
+.tl-item {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  background: var(--bg-card-light);
+  border: 1px solid var(--border-light);
+  border-radius: 10px;
+  padding: 9px 14px;
+  transition: background-color 0.25s var(--ease-smooth), border-color 0.25s ease;
+}
+.tl-item:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--border-color);
+}
+.tl-dot {
+  position: absolute;
+  left: -29px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-disabled);
+  border: 2px solid var(--bg-page);
+}
+.tl-item.tl-active {
+  border-color: rgba(var(--accent-rgb), 0.4);
+}
+.tl-item.tl-active .tl-dot {
+  background: var(--accent);
+  box-shadow: 0 0 0 4px rgba(var(--accent-rgb), 0.18);
+  animation: breathe 2.4s ease-in-out infinite;
+}
+.tl-time {
+  font-family: 'JetBrains Mono', monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+.tl-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.tl-dur {
+  font-family: 'JetBrains Mono', monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+

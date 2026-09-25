@@ -16,7 +16,6 @@ import {
   Statistic,
   Table,
   Tabs,
-  Tag,
   Tooltip,
   Typography,
 } from 'antd';
@@ -41,6 +40,7 @@ import { backupApi } from '../../api/backup';
 import { trashApi, softDeleteSession } from '../../api/trash';
 import { statsApi } from '../../api/stats';
 import type { BootSession, OverviewStats, TrashData } from '../../api/types';
+import StatusPill from '../../components/StatusPill';
 
 const { Title, Text } = Typography;
 
@@ -175,13 +175,18 @@ function Admin() {
     (a, b) => new Date(b.bootTime).getTime() - new Date(a.bootTime).getTime(),
   );
 
-  /* ---------- 表格列 ---------- */
+  /* ---------- 表格列（结构化：数字右对齐 tabular-nums + 状态胶囊） ---------- */
   const baseColumns: ColumnsType<BootSession> = [
     {
       title: '序号',
       key: 'idx',
       width: 70,
-      render: (_v, _r, idx) => idx + 1,
+      align: 'right',
+      render: (_v, _r, idx) => (
+        <span className="tnum" style={{ color: 'var(--text-muted)' }}>
+          {idx + 1}
+        </span>
+      ),
     },
     {
       title: '开机时间',
@@ -189,7 +194,9 @@ function Admin() {
       key: 'bootTime',
       width: 190,
       render: (v: string) => (
-        <span style={{ fontFamily: 'JetBrains Mono, monospace' }}>{fmtFullTime(v)}</span>
+        <span className="tnum" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
+          {fmtFullTime(v)}
+        </span>
       ),
     },
     {
@@ -199,28 +206,32 @@ function Admin() {
       width: 190,
       render: (v: string | null) =>
         v ? (
-          <span style={{ fontFamily: 'JetBrains Mono, monospace' }}>{fmtFullTime(v)}</span>
+          <span className="tnum" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
+            {fmtFullTime(v)}
+          </span>
         ) : (
-          <Badge status="processing" text={<Text type="success">进行中</Text>} />
+          <span style={{ color: 'var(--text-muted)' }}>—</span>
         ),
     },
     {
       title: '会话时长',
       key: 'duration',
       width: 150,
+      align: 'right',
       render: (_v, record) => {
         if (!record.shutdownTime) {
           const dur = now - new Date(record.bootTime).getTime();
           return (
-            <Badge status="processing">
-              <span style={{ fontFamily: 'JetBrains Mono, monospace', color: '#1677ff' }}>
-                {dur > 0 ? fmtDuration(dur) : liveDuration(record.bootTime)}
-              </span>
-            </Badge>
+            <span
+              className="tnum"
+              style={{ fontFamily: 'JetBrains Mono, monospace', color: 'var(--accent)' }}
+            >
+              {dur > 0 ? fmtDuration(dur) : liveDuration(record.bootTime)}
+            </span>
           );
         }
         return (
-          <span style={{ fontFamily: 'JetBrains Mono, monospace' }}>
+          <span className="tnum" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
             {fmtDuration(record.duration)}
           </span>
         );
@@ -232,9 +243,9 @@ function Admin() {
       width: 100,
       render: (_v, record) =>
         record.shutdownTime ? (
-          <Tag color="green">已关机</Tag>
+          <StatusPill tone="success">已关机</StatusPill>
         ) : (
-          <Tag color="blue">进行中</Tag>
+          <StatusPill tone="accent">进行中</StatusPill>
         ),
     },
   ];
@@ -287,11 +298,42 @@ function Admin() {
   };
 
   const handleClearAll = () => {
+    const list = data.sessions;
     modal.confirm({
-      title: '确认清空全部记录？',
+      title: '永久删除全部记录？',
       icon: <WarningOutlined style={{ color: '#ff4d4f' }} />,
-      content: '此操作不可恢复，所有开机记录将被永久删除（不会进入回收站）。',
-      okText: '确认清空',
+      content: (
+        <div>
+          <p>所有开机记录将被永久删除，无法恢复（不进入回收站）。</p>
+          <div
+            style={{
+              marginTop: 8,
+              padding: '8px 12px',
+              borderRadius: 8,
+              background: 'var(--bg-card-light)',
+              border: '1px solid var(--border-light)',
+              fontSize: 13,
+            }}
+          >
+            {list.length > 0 ? (
+              <>
+                将删除 <b className="tnum">{list.length}</b> 条记录（
+                {fmtFullTime(
+                  list.reduce((min, s) => (s.bootTime < min ? s.bootTime : min), list[0].bootTime),
+                )}
+                {' ～ '}
+                {fmtFullTime(
+                  list.reduce((max, s) => (s.bootTime > max ? s.bootTime : max), list[0].bootTime),
+                )}
+                ）
+              </>
+            ) : (
+              '当前没有记录'
+            )}
+          </div>
+        </div>
+      ),
+      okText: `永久删除 ${list.length} 条记录`,
       okType: 'danger',
       cancelText: '取消',
       onOk: async () => {
@@ -340,9 +382,9 @@ function Admin() {
             编辑
           </Button>
           <Popconfirm
-            title="确认删除？"
-            description="此记录将被移入回收站，可在回收站还原。"
-            okText="删除"
+            title="移入回收站？"
+            description={`开机于 ${fmtFullTime(record.bootTime)} 的记录将移入回收站，可还原。`}
+            okText="移入回收站"
             okType="danger"
             cancelText="取消"
             onConfirm={() => void handleSoftDelete(record)}
@@ -383,11 +425,38 @@ function Admin() {
   };
 
   const handleClearTrash = () => {
+    const list = trashData.sessions;
     modal.confirm({
-      title: '确认清空回收站？',
+      title: '永久删除回收站内容？',
       icon: <WarningOutlined style={{ color: '#ff4d4f' }} />,
-      content: '回收站中的所有记录将被永久删除，不可恢复。',
-      okText: '确认清空',
+      content: (
+        <div>
+          <p>回收站中的所有记录将被永久删除，无法恢复。</p>
+          <div
+            style={{
+              marginTop: 8,
+              padding: '8px 12px',
+              borderRadius: 8,
+              background: 'var(--bg-card-light)',
+              border: '1px solid var(--border-light)',
+              fontSize: 13,
+            }}
+          >
+            {list.length > 0 ? (
+              <>
+                将删除 <b className="tnum">{list.length}</b> 条记录（最早：
+                {fmtFullTime(
+                  list.reduce((min, s) => (s.bootTime < min ? s.bootTime : min), list[0].bootTime),
+                )}
+                ）
+              </>
+            ) : (
+              '回收站是空的'
+            )}
+          </div>
+        </div>
+      ),
+      okText: `永久删除 ${list.length} 条`,
       okType: 'danger',
       cancelText: '取消',
       onOk: async () => {
@@ -420,9 +489,9 @@ function Admin() {
             还原
           </Button>
           <Popconfirm
-            title="永久删除？"
-            description="不可恢复。"
-            okText="删除"
+            title="永久删除这条记录？"
+            description={`开机于 ${fmtFullTime(record.bootTime)}，删除后无法恢复。`}
+            okText="永久删除"
             okType="danger"
             cancelText="取消"
             onConfirm={() => void handlePermanentDelete(record.id)}
@@ -612,18 +681,9 @@ function Admin() {
                     >
                       合并选中（{selectedRowKeys.length}）
                     </Button>
-                    <Popconfirm
-                      title="确认清空全部记录？"
-                      description="所有记录将被永久删除（不进回收站）。"
-                      okText="清空"
-                      okType="danger"
-                      cancelText="取消"
-                      onConfirm={handleClearAll}
-                    >
-                      <Button danger icon={<DeleteOutlined />}>
-                        清空全部
-                      </Button>
-                    </Popconfirm>
+                    <Button danger icon={<DeleteOutlined />} onClick={handleClearAll}>
+                      清空全部
+                    </Button>
                     <Button icon={<ReloadOutlined />} onClick={() => void refresh()} loading={loading}>
                       刷新记录
                     </Button>
@@ -651,18 +711,9 @@ function Admin() {
               children: (
                 <>
                   <Space style={{ marginBottom: 12 }}>
-                    <Popconfirm
-                      title="清空回收站？"
-                      description="所有记录将永久删除。"
-                      okText="清空"
-                      okType="danger"
-                      cancelText="取消"
-                      onConfirm={handleClearTrash}
-                    >
-                      <Button danger icon={<DeleteOutlined />}>
-                        清空回收站
-                      </Button>
-                    </Popconfirm>
+                    <Button danger icon={<DeleteOutlined />} onClick={handleClearTrash}>
+                      清空回收站
+                    </Button>
                     <Button icon={<ReloadOutlined />} onClick={() => void loadTrash()} loading={trashLoading}>
                       刷新
                     </Button>

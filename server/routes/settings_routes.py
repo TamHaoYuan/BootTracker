@@ -17,7 +17,7 @@ _VALID_KEYS = {
     "autoStart", "autoBackup", "backupCount", "autoCloseIdle",
     "idleCloseMinutes", "defaultChartType", "timeFormat",
     "lanAccess", "tunnelEnabled", "tunnelToken", "customDomain", "customBgImage",
-    "widgetEnabled",
+    "widgetEnabled", "appTheme",
 }
 
 

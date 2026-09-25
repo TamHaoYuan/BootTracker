@@ -1,22 +1,23 @@
 import { useEffect, useMemo, useState } from 'react';
 // useEffect 用于下方定时器
 import {
-  Badge,
   Button,
   Card,
   DatePicker,
   Layout,
+  Segmented,
   Space,
   Table,
-  Tag,
   Tooltip,
   Typography,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table/interface';
 import {
+  FieldTimeOutlined,
   FileExcelOutlined,
   FileTextOutlined,
   ReloadOutlined,
+  TableOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import dayjs, { Dayjs } from 'dayjs';
@@ -24,8 +25,17 @@ import dayjs, { Dayjs } from 'dayjs';
 import * as XLSX from 'xlsx';
 
 import { useBootData } from '../../hooks/useBootData';
-import { fmtFullTime, fmtDuration, liveDuration } from '../../stores/sessionStore';
+import { useUiStore, type RecordsView } from '../../stores/uiStore';
+import {
+  fmtFullTime,
+  fmtDuration,
+  liveDuration,
+  isoToLocalDate,
+  getLocalToday,
+} from '../../stores/sessionStore';
 import type { BootSession } from '../../api/types';
+import StatusPill from '../../components/StatusPill';
+import EmptyState from '../../components/EmptyState';
 
 const { RangePicker } = DatePicker;
 const { Title, Text } = Typography;
@@ -126,6 +136,16 @@ function exportXLSX(sessions: BootSession[]): void {
 /* ================= 页面主组件（只读视图） ================= */
 
 type DateRange = [Dayjs | null, Dayjs | null] | null;
+type ViewMode = RecordsView;
+
+/** 时间轴条目时刻：HH:mm */
+function fmtClock(iso: string): string {
+  return new Date(iso).toLocaleTimeString('zh-CN', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
+}
 
 function Records() {
   const navigate = useNavigate();
@@ -134,6 +154,9 @@ function Records() {
   /* ---------- 状态 ---------- */
   const [dateRange, setDateRange] = useState<DateRange>(null);
   const [now, setNow] = useState<number>(Date.now());
+  // 视图模式跨会话记住（uiStore → localStorage）
+  const view = useUiStore((s) => s.recordsView);
+  const setView = useUiStore((s) => s.setRecordsView);
 
   /* ---------- 实时时长 tick（用于进行中会话） ---------- */
   useEffect(() => {
@@ -160,13 +183,51 @@ function Records() {
     );
   }, [data.sessions, dateRange]);
 
-  /* ---------- 表格列（只读） ---------- */
+  /* ---------- 时间轴分组（Structured 模式：按天分组，日期倒序） ---------- */
+  const TIMELINE_LIMIT = 100;
+  const timelineGroups = useMemo(() => {
+    const map = new Map<string, BootSession[]>();
+    for (const s of filteredSessions.slice(0, TIMELINE_LIMIT)) {
+      const d = isoToLocalDate(s.bootTime);
+      const list = map.get(d);
+      if (list) list.push(s);
+      else map.set(d, [s]);
+    }
+    const today = getLocalToday();
+    const groups: { date: string; label: string; total: number; items: BootSession[] }[] = [];
+    for (const [date, items] of map) {
+      const total = items.reduce((acc, s) => {
+        if (s.shutdownTime) {
+          return (
+            acc +
+            (s.duration ??
+              new Date(s.shutdownTime).getTime() - new Date(s.bootTime).getTime())
+          );
+        }
+        return acc + Math.max(0, now - new Date(s.bootTime).getTime());
+      }, 0);
+      groups.push({
+        date,
+        label: date === today ? '今天' : date,
+        total,
+        items,
+      });
+    }
+    return groups;
+  }, [filteredSessions, now]);
+
+  /* ---------- 表格列（只读，结构化：数字右对齐 tabular-nums + 状态胶囊） ---------- */
   const baseColumns: ColumnsType<BootSession> = [
     {
       title: '序号',
       key: 'idx',
       width: 70,
-      render: (_v, _r, idx) => idx + 1,
+      align: 'right',
+      render: (_v, _r, idx) => (
+        <span className="tnum" style={{ color: 'var(--text-muted)' }}>
+          {idx + 1}
+        </span>
+      ),
     },
     {
       title: '开机时间',
@@ -174,7 +235,9 @@ function Records() {
       key: 'bootTime',
       width: 190,
       render: (v: string) => (
-        <span style={{ fontFamily: 'JetBrains Mono, monospace' }}>{fmtFullTime(v)}</span>
+        <span className="tnum" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
+          {fmtFullTime(v)}
+        </span>
       ),
     },
     {
@@ -184,28 +247,32 @@ function Records() {
       width: 190,
       render: (v: string | null) =>
         v ? (
-          <span style={{ fontFamily: 'JetBrains Mono, monospace' }}>{fmtFullTime(v)}</span>
+          <span className="tnum" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
+            {fmtFullTime(v)}
+          </span>
         ) : (
-          <Badge status="processing" text={<Text type="success">进行中</Text>} />
+          <span style={{ color: 'var(--text-muted)' }}>—</span>
         ),
     },
     {
       title: '会话时长',
       key: 'duration',
       width: 150,
+      align: 'right',
       render: (_v, record) => {
         if (!record.shutdownTime) {
           const dur = now - new Date(record.bootTime).getTime();
           return (
-            <Badge status="processing">
-              <span style={{ fontFamily: 'JetBrains Mono, monospace', color: '#1677ff' }}>
-                {dur > 0 ? fmtDuration(dur) : liveDuration(record.bootTime)}
-              </span>
-            </Badge>
+            <span
+              className="tnum"
+              style={{ fontFamily: 'JetBrains Mono, monospace', color: 'var(--accent)' }}
+            >
+              {dur > 0 ? fmtDuration(dur) : liveDuration(record.bootTime)}
+            </span>
           );
         }
         return (
-          <span style={{ fontFamily: 'JetBrains Mono, monospace' }}>
+          <span className="tnum" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
             {fmtDuration(record.duration)}
           </span>
         );
@@ -217,9 +284,9 @@ function Records() {
       width: 100,
       render: (_v, record) =>
         record.shutdownTime ? (
-          <Tag color="green">已关机</Tag>
+          <StatusPill tone="success">已关机</StatusPill>
         ) : (
-          <Tag color="blue">进行中</Tag>
+          <StatusPill tone="accent">进行中</StatusPill>
         ),
     },
   ];
@@ -233,6 +300,14 @@ function Records() {
           开机记录
         </Title>
         <Space wrap>
+          <Segmented<ViewMode>
+            value={view}
+            onChange={setView}
+            options={[
+              { label: '表格', value: 'table', icon: <TableOutlined /> },
+              { label: '时间轴', value: 'timeline', icon: <FieldTimeOutlined /> },
+            ]}
+          />
           <Space.Compact>
             <Button icon={<FileTextOutlined />} onClick={() => exportCSV(filteredSessions)}>
               导出 CSV
@@ -268,7 +343,7 @@ function Records() {
         </Tooltip>
       </Space>
 
-      {/* 主表格（只读） */}
+      {/* 主内容：表格 / 时间轴双视图 */}
       <Card
         style={{
           background: 'var(--bg-card)',
@@ -276,39 +351,102 @@ function Records() {
         }}
         styles={{ body: { padding: 16 } }}
       >
-        <Table<BootSession>
-          rowKey="id"
-          loading={loading}
-          dataSource={filteredSessions}
-          columns={baseColumns}
-          scroll={{ x: 1000 }}
-          pagination={{
-            pageSize: 15,
-            showSizeChanger: true,
-            showTotal: (t) => `共 ${t} 条`,
-            pageSizeOptions: ['10', '15', '30', '50', '100'],
-          }}
-        />
+        {view === 'table' ? (
+          <Table<BootSession>
+            rowKey="id"
+            loading={loading}
+            dataSource={filteredSessions}
+            columns={baseColumns}
+            scroll={{ x: 1000 }}
+            pagination={{
+              pageSize: 15,
+              showSizeChanger: true,
+              showTotal: (t) => `共 ${t} 条`,
+              pageSizeOptions: ['10', '15', '30', '50', '100'],
+            }}
+            locale={{
+              emptyText: (
+                <EmptyState
+                  title={dateRange ? '该时间段没有记录' : '等待第一次开机记录…'}
+                  description={
+                    dateRange
+                      ? '换一个时间范围，或清除筛选查看全部记录。'
+                      : '记录来自应用启动时自动采集；也可以手动补录历史数据。'
+                  }
+                  action={
+                    <Button type="primary" ghost onClick={() => navigate('/admin')}>
+                      前往管理页面添加
+                    </Button>
+                  }
+                />
+              ),
+            }}
+          />
+        ) : filteredSessions.length === 0 ? (
+          <EmptyState
+            icon={<FieldTimeOutlined />}
+            title={dateRange ? '该时间段没有记录' : '等待第一次开机记录…'}
+            description={
+              dateRange
+                ? '换一个时间范围，或清除筛选查看全部记录。'
+                : '记录来自应用启动时自动采集；时间轴会按天展示开机事件流。'
+            }
+            action={
+              <Button type="primary" ghost onClick={() => navigate('/admin')}>
+                前往管理页面添加
+              </Button>
+            }
+          />
+        ) : (
+          <div>
+            {timelineGroups.map((g) => (
+              <div key={g.date}>
+                <div className="tl-day-head">
+                  <span className="tl-day-date">{g.label}</span>
+                  <span className="tl-day-sum">
+                    {g.items.length} 次 · 共 {fmtDuration(g.total)}
+                  </span>
+                </div>
+                <div className="tl-list">
+                  {g.items.map((s) => {
+                    const active = !s.shutdownTime;
+                    const dur = active
+                      ? Math.max(0, now - new Date(s.bootTime).getTime())
+                      : (s.duration ??
+                        new Date(s.shutdownTime!).getTime() - new Date(s.bootTime).getTime());
+                    return (
+                      <div key={s.id} className={`tl-item${active ? ' tl-active' : ''}`}>
+                        <span className="tl-dot" />
+                        <span className="tl-time">
+                          {fmtClock(s.bootTime)} → {s.shutdownTime ? fmtClock(s.shutdownTime) : '现在'}
+                        </span>
+                        <span className="tl-meta">
+                          <span
+                            className="tl-dur"
+                            style={active ? { color: 'var(--accent)' } : undefined}
+                          >
+                            {fmtDuration(dur)}
+                          </span>
+                          {active ? (
+                            <StatusPill tone="accent">进行中</StatusPill>
+                          ) : (
+                            <StatusPill tone="success">已关机</StatusPill>
+                          )}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+            {filteredSessions.length > 100 && (
+              <Text type="secondary" style={{ display: 'block', textAlign: 'center', padding: '12px 0 4px', fontSize: 12 }}>
+                时间轴仅展示最近 100 条，更早记录请切换到表格视图
+              </Text>
+            )}
+          </div>
+        )}
       </Card>
-
-      {/* 提示用户管理操作的位置（首次进入时） */}
-      {filteredSessions.length === 0 && !loading && (
-        <Card
-          size="small"
-          style={{
-            marginTop: 16,
-            background: 'var(--bg-card)',
-            borderColor: 'var(--border-color)',
-          }}
-        >
-          <Space>
-            <Text type="secondary">暂无记录。</Text>
-            <Button type="link" size="small" onClick={() => navigate('/admin')}>
-              前往管理页面添加
-            </Button>
-          </Space>
-        </Card>
-      )}
     </Layout.Content>
   );
 }

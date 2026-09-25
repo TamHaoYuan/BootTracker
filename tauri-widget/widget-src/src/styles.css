@@ -6,7 +6,7 @@
   --text-secondary: #c4c4cc;
   --text-muted: #8b8b94;
   --text-disabled: #52525b;
-  --text-success: #10b981;
+  --text-success: #6ee7b7;
   --text-warning: #f59e0b;
   --border-color: rgba(255, 255, 255, 0.1);
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
@@ -19,8 +19,21 @@
   --text-secondary: #475569;
   --text-muted: #94a3b8;
   --text-disabled: #cbd5e1;
+  --text-success: #059669;
   --border-color: rgba(0, 0, 0, 0.08);
 }
+
+/* ========== 主题变体 — 强调色与主应用 tokens.css 对齐（跟随 settings.appTheme） ========== */
+.card[data-theme="purple"] { --accent: #8b5cf6; --accent-rgb: 139, 92, 246; }
+.card[data-theme="blue"] { --accent: #3b82f6; --accent-rgb: 59, 130, 246; }
+.card[data-theme="green"] { --accent: #10b981; --accent-rgb: 16, 185, 129; }
+.card[data-theme="orange"] { --accent: #f97316; --accent-rgb: 249, 115, 22; }
+.card[data-theme="gray"] { --accent: #94a3b8; --accent-rgb: 148, 163, 184; }
+.card[data-theme="mica"] { --accent: #fafafa; --accent-rgb: 148, 163, 184; }
+.card[data-theme="material-you"] { --accent: #d0bcff; --accent-rgb: 208, 188, 255; }
+/* 浅色模式下中性主题 accent 随文字色变深（同主页 --text-primary） */
+.card.light-mode[data-theme="mica"] { --accent: #1e293b; }
+.card.light-mode[data-theme="material-you"] { --accent: #6650a4; }
 
 * {
   margin: 0;
@@ -85,7 +98,7 @@ html, body {
 
 .dot.on {
   background: var(--text-success);
-  box-shadow: 0 0 6px rgba(16, 185, 129, 0.6);
+  box-shadow: 0 0 6px rgba(110, 231, 183, 0.5);
 }
 
 .title {

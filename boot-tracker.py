@@ -4,7 +4,7 @@
 
 应用启动流程：
 1. 实例锁检查（防止多开）
-2. 自动关闭未结束会话并创建新会话
+2. 自动关闭未结束会话并创建新会话（调试模式 --debug 跳过，不记录开机）
 3. 自动备份数据
 4. 启动 HTTP 服务器
 5. 启动 Tauri 窗口（新版本默认，不可用时回退浏览器）
@@ -157,8 +157,14 @@ def main() -> None:
             logger.info("[startup] registering autostart")
             setup_autostart(enable=True)
 
-    # 自动关闭未结束会话并创建新会话
-    auto_close_and_new_session()
+    # 调试模式（--debug 或 BOOTTRACKER_DEBUG=1）：不记录开机会话，避免调试启动污染真实数据
+    debug_mode = ("--debug" in sys.argv
+                  or os.environ.get("BOOTTRACKER_DEBUG", "").lower() in ("1", "true", "yes"))
+    if debug_mode:
+        logger.info("[startup] DEBUG mode: boot session will NOT be recorded")
+    else:
+        # 自动关闭未结束会话并创建新会话
+        auto_close_and_new_session()
 
     # 自动备份
     if settings.get("autoBackup", True):

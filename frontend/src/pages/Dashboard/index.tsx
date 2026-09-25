@@ -1,35 +1,31 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Row,
   Col,
   Card,
-  Statistic,
   Table,
-  Tag,
-  Badge,
   Button,
   Space,
   App as AntdApp,
   Typography,
 } from 'antd';
 import type { TableProps } from 'antd';
-import {
-  DashboardOutlined,
-  ThunderboltOutlined,
-  PoweroffOutlined,
-  ClockCircleOutlined,
-  PlayCircleOutlined,
-} from '@ant-design/icons';
+import { PoweroffOutlined, ThunderboltOutlined } from '@ant-design/icons';
 
 import { useBootData } from '../../hooks/useBootData';
 import {
   fmtFullTime,
   fmtDuration,
-  countTodayBoots,
+  isoToLocalDate,
+  getLocalToday,
   liveDuration,
 } from '../../stores/sessionStore';
-import { dataApi, statsApi } from '../../api';
-import type { BootSession, OverviewStats } from '../../api/types';
+import { dataApi } from '../../api';
+import type { BootSession } from '../../api/types';
+import KpiCard from '../../components/KpiCard';
+import TrendBars from '../../components/TrendBars';
+import StatusPill from '../../components/StatusPill';
+import EmptyState from '../../components/EmptyState';
 
 const { Text } = Typography;
 
@@ -40,30 +36,29 @@ const CARD_STYLE: React.CSSProperties = {
   borderColor: 'var(--border-color)',
 };
 
-interface DashboardStats {
-  totalBoot: number;
-  totalShutdown: number;
-  avgDuration: number;
-  activeCount: number;
-  todayBoots: number;
-  recentSessions: BootSession[];
+const DAY_MS = 86400000;
+
+/** 会话时长：已结束用记录值，进行中算到当前时刻 */
+function sessionDuration(s: BootSession, now: number): number {
+  if (s.shutdownTime) {
+    return (
+      s.duration ??
+      new Date(s.shutdownTime).getTime() - new Date(s.bootTime).getTime()
+    );
+  }
+  return Math.max(0, now - new Date(s.bootTime).getTime());
 }
 
-const EMPTY_STATS: DashboardStats = {
-  totalBoot: 0,
-  totalShutdown: 0,
-  avgDuration: 0,
-  activeCount: 0,
-  todayBoots: 0,
-  recentSessions: [],
-};
+/** 日期字符串偏移：yyyy-mm-dd ± n 天 */
+function shiftDate(date: string, days: number): string {
+  const t = new Date(`${date}T00:00:00`).getTime() + days * DAY_MS;
+  return isoToLocalDate(new Date(t).toISOString());
+}
 
 function Dashboard() {
   const { message } = AntdApp.useApp();
   const { data: bootData, loading: bootLoading, refresh: refreshBoot } = useBootData();
 
-  const [stats, setStats] = useState<DashboardStats>(EMPTY_STATS);
-  const [statsLoading, setStatsLoading] = useState(false);
   const [now, setNow] = useState(Date.now());
 
   useEffect(() => {
@@ -71,50 +66,65 @@ function Dashboard() {
     return () => clearInterval(t);
   }, []);
 
-  const loadStats = useCallback(async (): Promise<void> => {
-    setStatsLoading(true);
-    try {
-      const overview = await statsApi.overview();
-      const o: OverviewStats = overview;
-      const sessions = bootData.sessions.length > 0 ? bootData.sessions : o.recentSessions ?? [];
-      setStats({
-        totalBoot: o.totalBoot ?? bootData.bootCount ?? 0,
-        totalShutdown: o.totalShutdown ?? bootData.shutdownCount ?? 0,
-        avgDuration: o.avgDuration ?? 0,
-        activeCount: o.activeCount ?? sessions.filter((s) => !s.shutdownTime).length,
-        todayBoots: countTodayBoots(sessions),
-        recentSessions: o.recentSessions ?? sessions.slice(-5).reverse(),
-      });
-    } catch (e) {
-      message.error(`加载概览数据失败：${(e as Error).message}`);
-      const sessions = bootData.sessions;
-      const finished = sessions.filter((s) => s.shutdownTime);
-      const totalDur = finished.reduce((acc, s) => acc + (s.duration ?? 0), 0);
-      setStats({
-        totalBoot: bootData.bootCount ?? 0,
-        totalShutdown: bootData.shutdownCount ?? 0,
-        avgDuration: finished.length > 0 ? totalDur / finished.length : 0,
-        activeCount: sessions.filter((s) => !s.shutdownTime).length,
-        todayBoots: countTodayBoots(sessions),
-        recentSessions: sessions.slice(-5).reverse(),
-      });
-    } finally {
-      setStatsLoading(false);
-    }
-  }, [bootData, message]);
+  /* ---------- KPI 计算（全部由 sessions 前端推导，Stripe 卡条公式） ---------- */
+  const kpi = useMemo(() => {
+    const sessions = bootData.sessions;
+    const today = getLocalToday();
+    const yesterday = shiftDate(today, -1);
 
-  useEffect(() => {
-    void loadStats();
-  }, [loadStats]);
-
-  const refreshAll = useCallback(async (): Promise<void> => {
-    const b = await refreshBoot();
-    if (b !== null) {
-      await loadStats();
+    // 按日期分桶（一次遍历）
+    const byDay = new Map<string, BootSession[]>();
+    for (const s of sessions) {
+      const d = isoToLocalDate(s.bootTime);
+      const list = byDay.get(d);
+      if (list) list.push(s);
+      else byDay.set(d, [s]);
     }
-  }, [refreshBoot, loadStats]);
+
+    const todaySessions = byDay.get(today) ?? [];
+    const yesterdaySessions = byDay.get(yesterday) ?? [];
+
+    const sumDuration = (list: BootSession[]): number =>
+      list.reduce((acc, s) => acc + sessionDuration(s, now), 0);
+
+    // 近 7 日 / 前 7 日开机次数（日均）
+    let last7 = 0;
+    let prev7 = 0;
+    for (let i = 0; i < 7; i++) {
+      last7 += (byDay.get(shiftDate(today, -i)) ?? []).length;
+      prev7 += (byDay.get(shiftDate(today, -7 - i)) ?? []).length;
+    }
+
+    // 近 14 日趋势（缺日补 0，末位是今天）
+    const trend14: { date: string; count: number }[] = [];
+    for (let i = 13; i >= 0; i--) {
+      const d = shiftDate(today, -i);
+      trend14.push({ date: d, count: (byDay.get(d) ?? []).length });
+    }
+
+    return {
+      todayBoots: todaySessions.length,
+      yesterdayBoots: yesterdaySessions.length,
+      todayUsage: sumDuration(todaySessions),
+      yesterdayUsage: sumDuration(yesterdaySessions),
+      avg7: last7 / 7,
+      prevAvg7: prev7 / 7,
+      trend14,
+      trend14Total: trend14.reduce((acc, d) => acc + d.count, 0),
+    };
+  }, [bootData.sessions, now]);
+
+  /* ---------- 最近会话（倒序取 5） ---------- */
+  const recentSessions = useMemo(
+    () =>
+      [...bootData.sessions]
+        .sort((a, b) => new Date(b.bootTime).getTime() - new Date(a.bootTime).getTime())
+        .slice(0, 5),
+    [bootData.sessions],
+  );
 
   const activeSession = bootData.sessions.find((s) => !s.shutdownTime) ?? null;
+  const activeCount = bootData.sessions.filter((s) => !s.shutdownTime).length;
 
   const handleRecordShutdown = async (): Promise<void> => {
     if (!activeSession) return;
@@ -123,23 +133,24 @@ function Dashboard() {
         shutdownTime: new Date().toISOString(),
       });
       message.success('已记录关机');
-      await refreshAll();
+      await refreshBoot();
     } catch (e) {
       message.error(`记录关机失败：${(e as Error).message}`);
     }
   };
 
-  const liveDurationText = activeSession
-    ? liveDuration(activeSession.bootTime)
-    : '—';
+  const liveDurationText = activeSession ? liveDuration(activeSession.bootTime) : '—';
 
+  /* ---------- 最近会话表格（结构化：数字右对齐 tabular-nums + 状态胶囊） ---------- */
   const tableColumns: TableProps<BootSession>['columns'] = [
     {
       title: '开机时间',
       dataIndex: 'bootTime',
       key: 'bootTime',
       render: (val: string) => (
-        <span style={{ color: 'var(--text-primary)' }}>{fmtFullTime(val)}</span>
+        <span className="tnum" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+          {fmtFullTime(val)}
+        </span>
       ),
       width: 200,
     },
@@ -148,8 +159,14 @@ function Dashboard() {
       dataIndex: 'shutdownTime',
       key: 'shutdownTime',
       render: (val: string | null) => (
-        <span style={{ color: val ? 'var(--text-primary)' : 'var(--text-muted)' }}>
-          {fmtFullTime(val)}
+        <span
+          className="tnum"
+          style={{
+            fontFamily: "'JetBrains Mono', monospace",
+            color: val ? 'var(--text-primary)' : 'var(--text-muted)',
+          }}
+        >
+          {val ? fmtFullTime(val) : '—'}
         </span>
       ),
       width: 200,
@@ -157,22 +174,18 @@ function Dashboard() {
     {
       title: '时长',
       key: 'duration',
-      render: (_: unknown, record: BootSession) => {
-        const d = record.shutdownTime
-          ? (record.duration ??
-              (new Date(record.shutdownTime).getTime() - new Date(record.bootTime).getTime()))
-          : now - new Date(record.bootTime).getTime();
-        return (
-          <span
-            style={{
-              color: 'var(--accent)',
-              fontFamily: "'JetBrains Mono', monospace",
-            }}
-          >
-            {fmtDuration(d)}
-          </span>
-        );
-      },
+      align: 'right',
+      render: (_: unknown, record: BootSession) => (
+        <span
+          className="tnum"
+          style={{
+            color: record.shutdownTime ? 'var(--text-primary)' : 'var(--accent)',
+            fontFamily: "'JetBrains Mono', monospace",
+          }}
+        >
+          {fmtDuration(sessionDuration(record, now))}
+        </span>
+      ),
       width: 140,
     },
     {
@@ -180,107 +193,128 @@ function Dashboard() {
       key: 'status',
       render: (_: unknown, record: BootSession) =>
         record.shutdownTime ? (
-          <Tag color="default">已结束</Tag>
+          <StatusPill tone="muted">已结束</StatusPill>
         ) : (
-          <Badge status="processing" text={<Tag color="success">进行中</Tag>} />
+          <StatusPill tone="accent">进行中</StatusPill>
         ),
-      width: 120,
+      width: 110,
     },
   ];
 
-  const recentForTable = stats.recentSessions.slice(0, 5);
+  const bootDiff = kpi.todayBoots - kpi.yesterdayBoots;
 
   return (
     <div style={{ position: 'relative' }}>
+      {/* ===== KPI 卡条（Stripe 公式：大数字 + 标签 + 趋势箭头） ===== */}
       <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-        <Col xs={24} sm={12} md={12} lg={8}>
-          <Card
-            className="today-boot-card"
-            style={{
-              ...CARD_STYLE,
-              background: 'linear-gradient(135deg, rgba(var(--accent-rgb), 0.18), rgba(var(--accent-rgb), 0.04))',
-              borderColor: 'rgba(var(--accent-rgb), 0.35)',
+        <Col xs={24} sm={12} lg={6}>
+          <KpiCard
+            hero
+            accent
+            loading={bootLoading}
+            label="今日开机"
+            value={kpi.todayBoots}
+            trend={
+              bootDiff > 0
+                ? { dir: 'up', text: `较昨日 +${bootDiff} 次` }
+                : bootDiff < 0
+                  ? { dir: 'down', text: `较昨日 ${bootDiff} 次` }
+                  : { dir: 'flat', text: '与昨日持平' }
+            }
+          />
+        </Col>
+        <Col xs={24} sm={12} lg={5}>
+          <KpiCard
+            mono
+            loading={bootLoading}
+            label="今日使用时长"
+            value={fmtDuration(kpi.todayUsage)}
+            trend={{ dir: 'flat', text: `昨日 ${fmtDuration(kpi.yesterdayUsage)}` }}
+          />
+        </Col>
+        <Col xs={12} sm={12} lg={4}>
+          <KpiCard
+            loading={bootLoading}
+            label="7 日日均开机"
+            value={kpi.avg7.toFixed(1)}
+            trend={{
+              dir:
+                kpi.avg7 > kpi.prevAvg7
+                  ? 'up'
+                  : kpi.avg7 < kpi.prevAvg7
+                    ? 'down'
+                    : 'flat',
+              text: `前 7 日 ${kpi.prevAvg7.toFixed(1)}`,
             }}
-            loading={statsLoading || bootLoading}
-          >
-            <Statistic
-              title={
-                <span style={{ color: 'var(--text-secondary)', fontSize: 13, letterSpacing: 0.5 }}>
-                  今日开机
-                </span>
-              }
-              value={stats.todayBoots}
-              prefix={<ThunderboltOutlined style={{ color: 'var(--accent)' }} />}
-              valueStyle={{
-                color: 'var(--accent)',
-                fontWeight: 700,
-                fontSize: 40,
-                fontFamily: "'JetBrains Mono', monospace",
-              }}
-            />
-          </Card>
+          />
         </Col>
-        <Col xs={24} sm={12} md={6} lg={4}>
-          <Card style={CARD_STYLE} loading={statsLoading || bootLoading}>
-            <Statistic
-              title={<span style={{ color: 'var(--text-muted)' }}>累计开机</span>}
-              value={stats.totalBoot}
-              prefix={<DashboardOutlined style={{ color: 'var(--text-success-dark)' }} />}
-              valueStyle={{ color: 'var(--text-primary)', fontWeight: 700 }}
-            />
-          </Card>
+        <Col xs={12} sm={12} lg={4}>
+          <KpiCard
+            loading={bootLoading}
+            label="累计记录"
+            value={bootData.bootCount ?? bootData.sessions.length}
+          />
         </Col>
-        <Col xs={24} sm={12} md={6} lg={4}>
-          <Card style={CARD_STYLE} loading={statsLoading || bootLoading}>
-            <Statistic
-              title={<span style={{ color: 'var(--text-muted)' }}>累计关机</span>}
-              value={stats.totalShutdown}
-              prefix={<PoweroffOutlined style={{ color: 'var(--text-danger-dark)' }} />}
-              valueStyle={{ color: 'var(--text-primary)', fontWeight: 700 }}
-            />
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} md={6} lg={4}>
-          <Card style={CARD_STYLE} loading={statsLoading || bootLoading}>
-            <Statistic
-              title={<span style={{ color: 'var(--text-muted)' }}>平均会话时长</span>}
-              value={fmtDuration(stats.avgDuration)}
-              prefix={<ClockCircleOutlined style={{ color: 'var(--accent2)' }} />}
-              valueStyle={{
-                color: 'var(--text-primary)',
-                fontWeight: 700,
-                fontFamily: "'JetBrains Mono', monospace",
-                fontSize: 20,
-              }}
-            />
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} md={6} lg={4}>
-          <Card style={CARD_STYLE} loading={statsLoading || bootLoading}>
-            <Statistic
-              title={<span style={{ color: 'var(--text-muted)' }}>进行中会话</span>}
-              value={stats.activeCount}
-              prefix={<PlayCircleOutlined style={{ color: 'var(--text-success-dark)' }} />}
-              valueStyle={{ color: 'var(--text-success)', fontWeight: 700 }}
-            />
-          </Card>
+        <Col xs={24} sm={12} lg={5}>
+          <KpiCard
+            loading={bootLoading}
+            label="进行中会话"
+            value={activeCount}
+            extra={
+              activeCount > 0 ? (
+                <StatusPill tone="accent">使用中</StatusPill>
+              ) : (
+                <StatusPill tone="muted">无</StatusPill>
+              )
+            }
+          />
         </Col>
       </Row>
 
-      <Card style={{ ...CARD_STYLE, marginBottom: 16 }} title="本次会话">
-        <Row gutter={[24, 16]}>
-          <Col xs={24} md={12}>
+      {/* ===== 主趋势图 + 本次会话（一图表一操作，拒绝图表墙） ===== */}
+      <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
+        <Col xs={24} lg={14}>
+          <Card
+            style={CARD_STYLE}
+            title={
+              <Space>
+                <ThunderboltOutlined style={{ color: 'var(--accent)' }} />
+                <span>近 14 日开机趋势</span>
+              </Space>
+            }
+            extra={
+              <Text type="secondary" className="tnum" style={{ fontSize: 12 }}>
+                共 {kpi.trend14Total} 次
+              </Text>
+            }
+          >
+            {kpi.trend14Total === 0 && !bootLoading ? (
+              <EmptyState
+                title="近 14 日没有开机记录"
+                description="应用会在每次启动时自动记录开机时间，数据积累后这里会展示趋势。"
+              />
+            ) : (
+              <TrendBars data={kpi.trend14} height={130} />
+            )}
+          </Card>
+        </Col>
+        <Col xs={24} lg={10}>
+          <Card style={{ ...CARD_STYLE, height: '100%' }} title="本次会话">
             <div
               style={{
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                padding: '8px 0',
+                padding: '7px 0',
                 borderBottom: '1px solid var(--border-light)',
               }}
             >
               <Text style={{ color: 'var(--text-muted)' }}>本次开机时间</Text>
-              <Text strong style={{ color: 'var(--text-primary)' }}>
+              <Text
+                strong
+                className="tnum"
+                style={{ color: 'var(--text-primary)', fontFamily: "'JetBrains Mono', monospace", fontSize: 13 }}
+              >
                 {fmtFullTime(activeSession?.bootTime ?? null)}
               </Text>
             </div>
@@ -289,15 +323,15 @@ function Dashboard() {
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                padding: '8px 0',
+                padding: '7px 0',
                 borderBottom: '1px solid var(--border-light)',
               }}
             >
               <Text style={{ color: 'var(--text-muted)' }}>当前状态</Text>
               {activeSession ? (
-                <Badge status="processing" text={<Tag color="success">进行中</Tag>} />
+                <StatusPill tone="accent">进行中</StatusPill>
               ) : (
-                <Tag color="default">已结束</Tag>
+                <StatusPill tone="muted">已结束</StatusPill>
               )}
             </div>
             <div
@@ -305,12 +339,14 @@ function Dashboard() {
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                padding: '8px 0',
+                padding: '7px 0',
+                marginBottom: 12,
               }}
             >
               <Text style={{ color: 'var(--text-muted)' }}>已运行时长</Text>
               <Text
                 strong
+                className="tnum"
                 style={{
                   color: 'var(--accent)',
                   fontFamily: "'JetBrains Mono', monospace",
@@ -320,8 +356,6 @@ function Dashboard() {
                 {liveDurationText}
               </Text>
             </div>
-          </Col>
-          <Col xs={24} md={12} style={{ display: 'flex', alignItems: 'center' }}>
             <Button
               type="primary"
               danger
@@ -330,14 +364,15 @@ function Dashboard() {
               size="large"
               disabled={!activeSession}
               onClick={() => void handleRecordShutdown()}
-              style={{ height: 64, fontSize: 16, fontWeight: 600 }}
+              style={{ height: 48, fontSize: 15, fontWeight: 600 }}
             >
               记录关机
             </Button>
-          </Col>
-        </Row>
-      </Card>
+          </Card>
+        </Col>
+      </Row>
 
+      {/* ===== 最近会话（表格回归） ===== */}
       <Card
         style={CARD_STYLE}
         title={
@@ -349,7 +384,7 @@ function Dashboard() {
           </Space>
         }
         extra={
-          <Button size="small" onClick={() => void refreshAll()} loading={bootLoading || statsLoading}>
+          <Button size="small" onClick={() => void refreshBoot()} loading={bootLoading}>
             刷新
           </Button>
         }
@@ -357,10 +392,18 @@ function Dashboard() {
         <Table<BootSession>
           rowKey="id"
           columns={tableColumns}
-          dataSource={recentForTable}
+          dataSource={recentSessions}
           pagination={false}
           size="middle"
-          loading={bootLoading || statsLoading}
+          loading={bootLoading}
+          locale={{
+            emptyText: (
+              <EmptyState
+                title="等待第一次开机记录…"
+                description="记录来自应用启动时自动采集；也可以到「管理」页面手动补录历史数据。"
+              />
+            ),
+          }}
         />
       </Card>
     </div>
