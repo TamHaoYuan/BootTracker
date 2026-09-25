@@ -5,14 +5,14 @@
 ;   1. 安装 Inno Setup 6（https://jrsoftware.org/isdl.php）
 ;   2. 用 Inno Setup Compiler 打开本文件 boot-tracker.iss
 ;   3. 点击 Build → Compile（或 Ctrl+F9）
-;   4. 生成的安装程序位于 installer_output\BootTracker-Setup-1.0.0.exe
+;   4. 生成的安装程序位于 installer_output\BootTracker-Setup-2.0.1.exe
 ;
 ; 前置条件：已通过 PyInstaller 生成 dist\BootTracker\ 目录
 ;   命令： pyinstaller boot-tracker.spec --noconfirm
 
 [Setup]
 AppName=开机记录
-AppVersion=1.0.0
+AppVersion=2.0.1
 AppPublisher=BootTracker
 AppPublisherURL=https://github.com/boottracker
 AppSupportURL=https://github.com/boottracker
@@ -23,13 +23,13 @@ PrivilegesRequired=lowest
 PrivilegesRequiredOverridesAllowed=dialog
 Compression=lzma2
 SolidCompression=yes
-ArchitecturesInstallIn64BitMode=x64
-ArchitecturesAllowed=x64
+ArchitecturesInstallIn64BitMode=x64compatible
+ArchitecturesAllowed=x64compatible
 DisableProgramGroupPage=yes
 DisableDirPage=no
 WizardStyle=modern
 OutputDir=installer_output
-OutputBaseFilename=BootTracker-Setup-1.0.0
+OutputBaseFilename=BootTracker-Setup-2.0.1
 SetupIconFile=icon.ico
 UninstallDisplayIcon={app}\开机记录.exe
 UninstallDisplayName=开机记录

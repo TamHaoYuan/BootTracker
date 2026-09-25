@@ -1,299 +1,205 @@
-# 开机记录 (BootTracker)
+<p align="center">
+  <img src="frontend/public/icons/icon.png" alt="BootTracker Logo" width="96" height="96" />
+</p>
 
-> 轻量级 Windows 桌面应用，自动记录每次开机/关机时间，提供统计分析、图表可视化与桌面浮动组件。
+<h1 align="center">BootTracker</h1>
 
-版本 `1.1.0`  ·  端口 `18792`  ·  Python `3.10+`
+<p align="center">
+  A lightweight Windows desktop app that automatically records every boot/shutdown,<br />
+  with statistics, charts and a floating desktop widget.
+</p>
 
----
+<p align="center">
+  <a href="https://github.com/TamHaoYuan/BootTracker/actions/workflows/ci.yml">
+    <img src="https://github.com/TamHaoYuan/BootTracker/actions/workflows/ci.yml/badge.svg" alt="CI" />
+  </a>
+  <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT" /></a>
+  <img src="https://img.shields.io/badge/platform-Windows%2010%2F11-0078D6?logo=windows&logoColor=white" alt="Platform" />
+  <img src="https://img.shields.io/badge/version-2.0.1-8b5cf6" alt="Version" />
+</p>
 
-## 功能特性
-
-### 核心功能
-- **自动记录开关机** — 启动即记录本次开机时间，支持手动/自动记录关机，自动关闭未结束会话
-- **会话时长统计** — 计算每次开机到关机的运行时长
-- **数据导出** — 支持 CSV / JSON / XLSX 三种格式
-- **回收站** — 删除的记录进入回收站，可恢复或彻底清除
-- **自动备份** — 启动时自动备份，最多保留 30 份
-
-### 图表与统计
-- **趋势图表** — 柱状图 / 折线图 / 饼图，支持切换
-- **开机热度图** — 类 GitHub 贡献热力图，直观展示开机频率
-- **统计分析** — 每日/每周指标、趋势分析、异常检测
-
-### 界面与主题
-- **PyQt5 WebEngine 主窗口** — 原生窗口体验，沉浸式暗色标题栏
-- **多主题** — 紫/蓝/绿/橙/灰/Mica/Material You 等主题色
-- **Dark Gallery 暗色模式** — 深炭黑背景、高对比文字、各主题专属暗色
-- **过渡动画** — 卡片、按钮、图表的流畅过渡与入场动画
-
-### 桌面集成
-- **系统托盘** — pystray 托盘图标带开机进度环，菜单支持显示窗口/退出
-- **桌面小组件** — Tkinter 无边框半透明浮动卡片，可拖动、位置记忆、右键菜单
-- **开机自启** — 可选开机自动启动
-- **空闲检测** — 超时空闲自动关闭
-
-### 远程访问
-- **Cloudflare Tunnel** — 内置隧道功能，支持自定义域名，无需公网 IP 即可远程访问
-- **局域网访问** — 可选开启 LAN 访问
+<p align="center">
+  <b>English</b> · <a href="./README.zh-CN.md">简体中文</a>
+</p>
 
 ---
 
-## 技术栈
+## Features
 
-| 层级 | 技术 |
-|------|------|
-| 后端 | Python 3 标准库 `http.server`，模块化路由架构 |
-| 前端 | Vite + React 18 + TypeScript + Ant Design 5 + Zustand |
-| 主窗口 | Tauri v2（首选）/ PyQt5 WebEngine（回退） |
-| 桌面组件 | Tkinter |
-| 系统托盘 | pystray + Pillow（动态图标绘制） |
-| 隧道 | cloudflared |
-| 日志 | 标准 `logging` 模块，每日轮转 |
-| 测试 | pytest + pytest-qt（后端）· Vitest（前端） |
-| 打包 | PyInstaller + Inno Setup / 自定义安装器 |
-| CI/CD | GitHub Actions（前端 lint/test/build + 后端 pytest） |
+### Core
+- **Automatic boot/shutdown tracking** — a session is recorded on startup and closed on shutdown; stale sessions are auto-closed on next launch
+- **SQLite storage** — all records live in a single `boot-data.db` file
+- **Data export** — CSV / JSON / XLSX
+- **Recycle bin** — deleted records are soft-deleted, restorable or permanently removable
+- **Automatic backups** — created on startup, up to 30 retained
 
----
+### Dashboard & Charts
+- **KPI cards** — today's boots / usage duration / 7-day daily average / total records, with dual-encoded trends (arrow + semantic color, colorblind-safe)
+- **14-day trend chart** and a structured recent-sessions table
+- **Records page** — table view and timeline view (grouped by day, running session highlighted)
+- **Charts page** — bar / line / pie trends plus a GitHub-style boot heatmap
 
-## 项目结构
+### UI & Theming
+- **Tauri v2 native window** with immersive dark titlebar (falls back to the system browser)
+- **7 accent themes** — Purple / Blue / Green / Orange / Gray / Mica (translucent, Windows-native) / Material You, each with dark & light modes
+- **Remembered preferences** — theme, sidebar state and view modes persist across sessions
+- **Non-linear motion system** — spring & expo easing, splash screen respects `prefers-reduced-motion`
 
-```
-BootTracker/
-├── boot-tracker.py            # 应用入口（实例锁 → 会话 → 备份 → 服务器 → 窗口 → 托盘）
-├── requirements.txt           # Python 运行依赖
-├── icon.ico                   # 应用图标
-├── boot-tracker.spec          # PyInstaller 打包配置
-├── boot-tracker.iss           # Inno Setup 安装脚本
-├── installer.py / .spec       # 自定义安装器（tkinter + 7z）
-│
-├── server/                    # 后端服务包
-│   ├── __init__.py            # 模块导出
-│   ├── config.py              # 配置常量（端口、路径、版本）
-│   ├── logging_config.py      # 日志配置（每日轮转 + 控制台）
-│   ├── data_store.py          # 数据存储（记录/回收站/备份/实例锁）
-│   ├── http_handler.py        # HTTP 服务器 + 静态资源服务
-│   ├── settings.py            # 设置管理 + 开机自启
-│   ├── version.py             # 版本管理 + 更新检查
-│   ├── tauri_window.py        # Tauri 窗口控制器（新版本默认）
-│   ├── tray.py                # pystray 系统托盘 + 静态 PNG 图标
-│   ├── widget.py              # Tkinter 桌面小组件
-│   ├── tunnel.py              # Cloudflare Tunnel 隧道
-│   └── routes/                # 模块化 API 路由
-│       ├── __init__.py        # 路由注册表 + 装饰器
-│       ├── data_routes.py     # 数据 CRUD
-│       ├── trash_routes.py    # 回收站
-│       ├── settings_routes.py # 设置
-│       ├── stats_routes.py    # 统计分析
-│       ├── backup_routes.py   # 备份
-│       ├── version_routes.py  # 版本
-│       ├── tunnel_routes.py   # 隧道
-│       └── window_routes.py   # 窗口控制
-│
-├── frontend/                  # 前端源码（Vite + React + TS + AntD）
-│   ├── src/
-│   │   ├── api/               # HTTP 客户端 + 类型定义
-│   │   ├── bridge/            # QWebChannel 原生桥
-│   │   ├── hooks/             # 自定义 Hooks（useBootData / useTheme）
-│   │   ├── layouts/           # 布局组件（可折叠侧栏 + 玻璃态背景）
-│   │   ├── pages/             # 页面（Dashboard / Charts / Records / Settings / Admin）
-│   │   ├── stores/            # Zustand 状态管理
-│   │   └── styles/            # tokens.css + global.css + antd-theme.ts
-│   ├── tests/                 # Vitest 单元测试
-│   ├── index.html
-│   └── vite.config.ts         # Vite 配置（dev proxy + build → dist-static/）
-│
-├── tauri-app/                 # Tauri v2 桌面壳（Rust）
-│   ├── src/                   # Rust commands + lib + main
-│   ├── icons/                 # 多平台图标
-│   ├── tauri.conf.json
-│   └── Cargo.toml
-│
-├── tests/                     # pytest 后端测试
-├── scripts/                   # 构建/开发脚本
-│   ├── build.bat              # 一键构建（frontend build → tauri build → pyinstaller）
-│   └── dev.bat                # 一键开发（后端 + Vite dev server，支持 --tauri）
-│
-├── .github/workflows/ci.yml   # CI（前端 lint/test/build + 后端 pytest）
-│
-├── static/                    # 静态图标与上传目录（icon.png / uploads）
-└── deprecated/                # 旧版本已弃用文件（旧版前端 / PyQt5 / JSON 备份等）
-```
+### Desktop Integration
+- **Rust system tray** — unified tray with window/widget controls and app exit
+- **Rust desktop widget** — frameless, translucent, draggable card showing today's boot count; follows the main app's theme and dark/light mode live
+- **Auto-start**, **idle auto-close**, and a **watchdog** that self-heals crashed window/widget processes
 
----
+### Remote Access
+- **Cloudflare Tunnel** built in — reach your dashboard from anywhere with a custom domain, no public IP needed
+- **LAN access** toggle
 
-## 快速开始
+## Tech Stack
 
-### 环境要求
-- Windows 10/11
-- Python 3.10+
-- Node.js 20+（前端开发/构建）
+| Layer | Technology |
+|---|---|
+| Backend | Python 3 stdlib `http.server`, modular route registry, SQLite |
+| Frontend | Vite + React 18 + TypeScript + Ant Design 5 + Zustand |
+| Desktop shell | Tauri v2 (Rust) — window, tray, watchdog |
+| Desktop widget | Rust + Tauri v2 (separate binary, theme-synced) |
+| Tunnel | cloudflared |
+| Logging | stdlib `logging`, daily rotation under `logs/` |
+| Testing | pytest (backend) · Vitest (frontend) |
+| Packaging | PyInstaller (onedir) + Inno Setup installer |
+| CI/CD | GitHub Actions — typecheck, tests, builds |
 
-### 安装依赖
+## Quick Start
+
+### Option A — Installer (recommended)
+
+Download `BootTracker-Setup-x.y.z.exe` from [Releases](https://github.com/TamHaoYuan/BootTracker/releases), run it, done. User-level install (no admin required).
+
+### Option B — From source
+
+**Requirements:** Windows 10/11 · Python 3.10+ · Node.js 20+ · Rust toolchain (for Tauri window & widget)
 
 ```bash
-# 后端
+# 1. Python dependencies
 pip install -r requirements.txt
 
-# 前端
-cd frontend && npm install
-```
+# 2. Frontend dependencies + build (outputs to dist-static/)
+cd frontend && npm install && npm run build && cd ..
 
-> 隧道功能需要 `cloudflared.exe`（放置于项目根目录）
-
-### 开发模式
-
-```bash
-# 一键启动后端 + Vite dev server（HMR）
-scripts\dev.bat
-```
-
-- 后端 HTTP：`http://127.0.0.1:18792/`
-- 前端 Vite：`http://localhost:5173/`（代理 `/api` → 后端）
-
-### 生产运行
-
-**方式一：启动脚本（推荐）**
-
-双击 `开机记录-启动.bat`，自动用 `pythonw` 启动（无控制台窗口）。
-
-**方式二：命令行**
-
-```bash
+# 3. Run (starts backend + Tauri window; falls back to browser)
 python boot-tracker.py
 ```
 
-启动后：
-- 主界面以 Tauri 窗口打开（回退到 PyQt5 WebEngine → 浏览器）
-- 系统托盘显示带进度环的图标
-- 数据文件 `boot-data.json` 自动创建于运行目录
+> Tunnel feature requires `cloudflared.exe` in the project root.
 
----
+### Development
 
-## 打包
+```bash
+# Backend + Vite dev server with HMR (add --tauri for the native window)
+scripts\dev.bat
+```
 
-### 一键构建（前端 + PyInstaller）
+- Backend: `http://127.0.0.1:18792/`
+- Vite HMR: `http://localhost:5173/` (proxies `/api` to backend)
+
+**Debug mode** — launch without recording a boot session (keeps real data clean):
+
+```bash
+python boot-tracker.py --debug     # or set BOOTTRACKER_DEBUG=1
+```
+
+### Tests
+
+```bash
+pytest tests -q                    # backend
+cd frontend && npx vitest run      # frontend
+```
+
+## Build & Packaging
 
 ```bash
 scripts\build.bat
 ```
 
-流程：前端 `npm run build` → Vite 输出到 `dist-static/` → PyInstaller 打包
+Runs: frontend build → Tauri release build → widget release build → icon copy → PyInstaller.
+Output: `dist/BootTracker/开机记录.exe` (onedir).
 
-### 手动分步
-
-```bash
-# 1. 前端构建
-cd frontend && npm run build    # 输出到 ../dist-static/
-
-# 2. PyInstaller 打包
-cd .. && pyinstaller boot-tracker.spec --noconfirm
-```
-
-输出：`dist/BootTracker/开机记录.exe`（onedir 模式）
-
-### Inno Setup 安装程序
+Then build the installer with the bundled Inno Setup:
 
 ```bash
-# 前置：已生成 dist/BootTracker/ 目录
-# 用 Inno Setup Compiler 打开 boot-tracker.iss → 编译
+tools\inno-setup\ISCC.exe boot-tracker.iss
+# → installer_output/BootTracker-Setup-x.y.z.exe
 ```
 
-输出：`installer_output/BootTracker-Setup-1.0.0.exe`
+## Project Structure
 
-### 自定义安装器（7z 自包含）
-
-```bash
-# 1. 生成 payload（需 7z.exe 在项目根目录）
-7z a payload.7z * -mx=9    # 在 dist/BootTracker 目录内执行
-
-# 2. 打包安装器
-pyinstaller installer.spec --noconfirm
+```
+BootTracker/
+├── boot-tracker.py        # App entry (instance lock → session → backup → server → window → watchdog)
+├── boot-tracker.spec      # PyInstaller config (onedir)
+├── boot-tracker.iss       # Inno Setup installer script
+├── server/                # Python backend package
+│   ├── config.py          # Ports, paths, version
+│   ├── data_store.py      # SQLite storage (sessions / trash / backups)
+│   ├── http_handler.py    # HTTP server + static file serving
+│   ├── settings.py        # settings.json + autostart
+│   ├── tauri_window.py    # Tauri window controller
+│   ├── tray.py            # pystray fallback tray (browser mode only)
+│   ├── widget.py          # Rust widget process manager
+│   ├── tunnel.py          # Cloudflare Tunnel
+│   └── routes/            # Modular API routes (data/trash/settings/stats/backup/version/tunnel/window)
+├── frontend/              # Vite + React + TS + AntD source
+│   └── src/{api,bridge,components,hooks,layouts,pages,stores,styles}
+├── tauri-app/             # Tauri v2 desktop shell (Rust): window + tray + watchdog
+├── tauri-widget/          # Rust desktop widget (+ widget-src React frontend)
+├── tests/                 # pytest backend tests
+├── scripts/               # dev.bat / build.bat
+├── static/                # Icons + uploaded background images
+└── deprecated/            # Archived legacy code (PyQt5, old frontend, JSON store)
 ```
 
-输出：`dist/BootTracker-Setup.exe`（单文件自包含安装包）
+## API Overview
 
----
+All endpoints are served on `http://127.0.0.1:18792`.
 
-## API 端点
+| Method | Path | Description |
+|---|---|---|
+| GET | `/api/data` | All boot records |
+| POST | `/api/add-session` | Add a session manually |
+| PUT / DELETE | `/api/sessions/{id}` | Update / soft-delete a session |
+| POST | `/api/merge-sessions` | Merge adjacent sessions |
+| GET / POST | `/api/trash` · `/api/trash/restore` | Recycle bin / restore |
+| GET / PUT | `/api/settings` | Read / update settings (also starts/stops the tunnel) |
+| GET | `/api/stats/{overview,daily,weekly,trend,anomalies}` | Statistics & analysis |
+| GET / POST | `/api/backups` · `/api/backup/restore` | List / restore backups |
+| GET | `/api/version` · POST `/api/version/bump` | Version info / bump |
+| GET | `/api/tunnel-url` | Current tunnel URL |
+| POST | `/api/raise-window` · `/api/stop` · `/api/restart-server` | App & window control |
+| POST | `/api/widget-toggle` · `/api/upload-bg` | Toggle widget / upload background |
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | `/api/data` | 获取开机记录 |
-| POST | `/api/data` | 添加/更新记录 |
-| DELETE | `/api/data` | 删除记录（进回收站） |
-| GET | `/api/trash` | 获取回收站数据 |
-| POST | `/api/trash/restore` | 恢复回收站记录 |
-| GET | `/api/settings` | 获取设置 |
-| PUT | `/api/settings` | 更新设置 |
-| GET | `/api/stats/overview` | 统计概览 |
-| GET | `/api/stats/daily` | 每日趋势 |
-| GET | `/api/stats/weekly` | 每周趋势 |
-| GET | `/api/stats/anomalies` | 异常检测 |
-| GET | `/api/backup/list` | 备份列表 |
-| POST | `/api/backup/create` | 创建备份 |
-| POST | `/api/backup/restore` | 恢复备份 |
-| GET | `/api/version` | 版本信息 |
-| POST | `/api/version/bump` | 版本升级 |
-| GET | `/api/tunnel/status` | 隧道状态 |
-| POST | `/api/tunnel/start` | 启动隧道 |
-| POST | `/api/tunnel/stop` | 停止隧道 |
-| POST | `/api/raise-window` | 唤起主窗口 |
-| POST | `/api/window/theme` | 切换窗口主题 |
-| POST | `/api/stop` | 停止应用 |
+## Configuration
 
----
+Data files live next to the executable:
 
-## 配置说明
+| File | Purpose |
+|---|---|
+| `boot-data.db` | SQLite database (sessions + trash) |
+| `settings.json` | User settings |
+| `version.json` | Version history |
+| `logs/` | Daily-rotated logs |
+| `backup/` | Automatic backups (max 30) |
 
-### 数据文件（运行目录下）
-| 文件 | 说明 |
-|------|------|
-| `boot-data.json` | 开机记录数据 |
-| `trash-data.json` | 回收站数据 |
-| `settings.json` | 用户设置 |
-| `version.json` | 版本信息 |
-| `boot-tracker.log` | 运行日志（每日轮转） |
-| `backup/` | 自动备份目录（最多 30 份） |
+Key settings (`settings.json`):
 
-### 关键设置项（`settings.json`）
-| 键 | 默认 | 说明 |
-|----|------|------|
-| `autoStart` | `true` | 开机自启 |
-| `autoBackup` | `true` | 自动备份 |
-| `lanAccess` | `true` | 局域网访问 |
-| `widgetEnabled` | `false` | 桌面小组件 |
-| `tunnelEnabled` | `false` | Cloudflare 隧道 |
-| `customDomain` | `""` | 隧道自定义域名 |
-| `autoCloseIdle` | `false` | 空闲自动关闭 |
-| `idleCloseMinutes` | `5` | 空闲超时分钟数 |
+| Key | Default | Description |
+|---|---|---|
+| `autoStart` | `true` | Launch on Windows startup |
+| `autoBackup` | `true` | Backup on startup |
+| `lanAccess` | `true` | Bind 0.0.0.0 (LAN reachable) |
+| `widgetEnabled` | `false` | Desktop widget |
+| `appMode` / `appTheme` | `dark` / `mica` | Dark-light mode / accent theme |
+| `tunnelEnabled` | `false` | Cloudflare Tunnel |
+| `autoCloseIdle` | `false` | Close when idle (`idleCloseMinutes`) |
 
----
+## License
 
-## 开发规范
-
-### 后端（Python）
-- 文件头部：`#!/usr/bin/env python3` + `# -*- coding: utf-8 -*-` + 模块文档字符串
-- 导入分组：标准库 → 第三方 → 内部模块
-- 路由使用装饰器注册（`@get` / `@post` / `@put` / `@delete`）
-- 跨线程通信使用 `pyqtSignal`（禁用 `QTimer.singleShot` 跨线程）
-- 日志使用标准 `logging` 模块
-- 测试：`pytest tests -v`（54 用例，含 pytest-qt）
-
-### 前端（React + TypeScript）
-- 状态管理：Zustand store（`sessionStore` / `settingsStore` / `themeStore`）
-- 原生桥通信：`bridge/` 模块封装 QWebChannel Promise 化调用
-- API 客户端：`api/` 模块统一 HTTP 请求与类型定义
-- 样式：CSS 变量集中管理于 `tokens.css`（主题变体 via `data-theme` 属性）
-- 玻璃态设计：`global.css` 定义动画关键帧与 `.glass-orb` 装饰
-- 测试：`cd frontend && npm test`（Vitest）
-
-### CI/CD
-- 前端：`tsc -b` 类型检查 → `vitest` 测试 → `vite build`
-- 后端：`pytest tests -v`（`QT_QPA_PLATFORM=offscreen`）
-- 发布：tag push 时触发 `scripts/build.bat` 构建安装包
-
----
-
-## 许可证
-
-MIT
+[MIT](./LICENSE)
