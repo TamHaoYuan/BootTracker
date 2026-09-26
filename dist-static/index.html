@@ -5,19 +5,34 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>开机记录</title>
   <style>
-    /* 加载期 fallback 背景：transparent 窗口在 React 渲染前不可见，先铺一层不透明底色 */
+    /* 加载期 fallback 背景：transparent 窗口在 React 渲染前不可见，先铺一层不透明底色；
+       实际颜色由 body 末尾内联脚本按持久化主题设置，与 splash 底色一致避免闪色 */
     html, body { margin: 0; padding: 0; height: 100%; }
-    body { background-color: #0a0a0c; }
-    @media (prefers-color-scheme: light) {
-      body { background-color: #f5f5f7; }
-    }
   </style>
-  <script type="module" crossorigin src="./assets/index-BwzE6KX6.js"></script>
-  <link rel="modulepreload" crossorigin href="./assets/antd-ClQF-PY5.js">
-  <link rel="modulepreload" crossorigin href="./assets/react-Q4y7nUxH.js">
+  <script type="module" crossorigin src="./assets/index-DuBWTHpe.js"></script>
+  <link rel="modulepreload" crossorigin href="./assets/antd-CL7WKUIR.js">
+  <link rel="modulepreload" crossorigin href="./assets/react-Vnrz810c.js">
   <link rel="stylesheet" crossorigin href="./assets/index-BA8fBsXc.css">
 </head>
 <body>
   <div id="root"></div>
+  <script>
+    // 首帧前同步读取持久化主题（zustand persist: boottracker-theme），
+    // 底色与 BootSplash 一致（dark #0a0a0c / light #f8fafc）；
+    // 首次运行无存储时跟随系统配色
+    (function () {
+      var mode = 'dark';
+      try {
+        var raw = localStorage.getItem('boottracker-theme');
+        if (raw) {
+          var p = JSON.parse(raw);
+          if (p && p.state && p.state.mode === 'light') mode = 'light';
+        } else if (window.matchMedia && matchMedia('(prefers-color-scheme: light)').matches) {
+          mode = 'light';
+        }
+      } catch (e) { /* 损坏存储按默认 dark */ }
+      document.body.style.backgroundColor = mode === 'light' ? '#f8fafc' : '#0a0a0c';
+    })();
+  </script>
 </body>
 </html>

@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
-import { Layout, Menu, Button, Space, Tooltip, Badge, Drawer } from 'antd';
+import { Suspense, useEffect, useRef, useState } from 'react';
+import { Layout, Menu, Button, Space, Tooltip, Badge, Drawer, Spin } from 'antd';
 import type { MenuProps } from 'antd';
 import {
   DashboardOutlined,
@@ -18,6 +18,8 @@ import { useTheme } from '../hooks/useTheme';
 import { useSettingsStore } from '../stores/settingsStore';
 import { dataApi } from '../api/data';
 import { versionApi } from '../api/version';
+import { useVisibleInterval } from '../hooks/useVisibleInterval';
+import ErrorBoundary from '../components/ErrorBoundary';
 
 const { Sider, Header, Content } = Layout;
 
@@ -90,6 +92,27 @@ function formatNavTime(d: Date): string {
   return `${h}:${m}:${s}`;
 }
 
+/**
+ * 侧栏导航时钟：独立组件，每秒 tick 只重渲染自身。
+ * 若把 navTime 放在 AppLayout，会导致整个布局（含 <Outlet/> 当前页）每秒重渲染。
+ */
+function NavClock() {
+  const [t, setT] = useState(() => formatNavTime(new Date()));
+  useVisibleInterval(() => setT(formatNavTime(new Date())), 1000);
+  return (
+    <span
+      style={{
+        color: 'var(--text-secondary)',
+        fontSize: 11,
+        fontFamily: "'JetBrains Mono', monospace",
+        letterSpacing: 0.3,
+      }}
+    >
+      {t}
+    </span>
+  );
+}
+
 function AppLayout() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -108,7 +131,6 @@ function AppLayout() {
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   const [online, setOnline] = useState(false);
-  const [navTime, setNavTime] = useState(() => formatNavTime(new Date()));
   const [appVersion, setAppVersion] = useState<string>('');
 
   // 隐藏 Admin 入口：点击版本号三次（1.5s 内）触发跳转
@@ -178,11 +200,6 @@ function AppLayout() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [navigate]);
-
-  useEffect(() => {
-    const t = setInterval(() => setNavTime(formatNavTime(new Date())), 1000);
-    return () => clearInterval(t);
-  }, []);
 
   const selectedKeys = [location.pathname === '/' ? '/dashboard' : location.pathname];
 
@@ -321,16 +338,7 @@ function AppLayout() {
                     }
                   />
                 </Tooltip>
-                <span
-                  style={{
-                    color: 'var(--text-secondary)',
-                    fontSize: 11,
-                    fontFamily: "'JetBrains Mono', monospace",
-                    letterSpacing: 0.3,
-                  }}
-                >
-                  {navTime}
-                </span>
+                <NavClock />
               </div>
               <div
                 style={{
@@ -520,7 +528,19 @@ function AppLayout() {
           >
             {/* key=pathname：路由切换时重挂载，重放非线性入场动画 */}
             <div key={location.pathname} className="page-enter">
-              <Outlet />
+              {/* ErrorBoundary 兜底懒加载 chunk 失败（防不可恢复白屏）；
+                  Suspense 处理加载中：加载分包时侧栏/顶栏不动，仅内容区显示占位 */}
+              <ErrorBoundary>
+                <Suspense
+                  fallback={
+                    <div style={{ display: 'flex', justifyContent: 'center', padding: '48px 0' }}>
+                      <Spin />
+                    </div>
+                  }
+                >
+                  <Outlet />
+                </Suspense>
+              </ErrorBoundary>
             </div>
           </Content>
         </Layout>

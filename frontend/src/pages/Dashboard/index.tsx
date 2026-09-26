@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import {
   Row,
   Col,
@@ -18,7 +18,6 @@ import {
   fmtDuration,
   isoToLocalDate,
   getLocalToday,
-  liveDuration,
 } from '../../stores/sessionStore';
 import { dataApi } from '../../api';
 import type { BootSession } from '../../api/types';
@@ -26,6 +25,7 @@ import KpiCard from '../../components/KpiCard';
 import TrendBars from '../../components/TrendBars';
 import StatusPill from '../../components/StatusPill';
 import EmptyState from '../../components/EmptyState';
+import LiveDuration from '../../components/LiveDuration';
 
 const { Text } = Typography;
 
@@ -37,6 +37,18 @@ const CARD_STYLE: React.CSSProperties = {
 };
 
 const DAY_MS = 86400000;
+
+/* LiveDuration 调用点的稳定 style 引用：避免每次父渲染生成新对象使 memo 失效 */
+const LIVE_CELL_STYLE: React.CSSProperties = {
+  color: 'var(--accent)',
+  fontFamily: "'JetBrains Mono', monospace",
+};
+const LIVE_HERO_STYLE: React.CSSProperties = {
+  color: 'var(--accent)',
+  fontFamily: "'JetBrains Mono', monospace",
+  fontSize: 18,
+  fontWeight: 600,
+};
 
 /** 会话时长：已结束用记录值，进行中算到当前时刻 */
 function sessionDuration(s: BootSession, now: number): number {
@@ -59,16 +71,11 @@ function Dashboard() {
   const { message } = AntdApp.useApp();
   const { data: bootData, loading: bootLoading, refresh: refreshBoot } = useBootData();
 
-  const [now, setNow] = useState(Date.now());
-
-  useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(t);
-  }, []);
-
   /* ---------- KPI 计算（全部由 sessions 前端推导，Stripe 卡条公式） ---------- */
   const kpi = useMemo(() => {
     const sessions = bootData.sessions;
+    // now 在 memo 内取一次：随数据刷新（每 5s）重算，避免每秒全量重算分桶/趋势
+    const now = Date.now();
     const today = getLocalToday();
     const yesterday = shiftDate(today, -1);
 
@@ -112,7 +119,7 @@ function Dashboard() {
       trend14,
       trend14Total: trend14.reduce((acc, d) => acc + d.count, 0),
     };
-  }, [bootData.sessions, now]);
+  }, [bootData.sessions]);
 
   /* ---------- 最近会话（倒序取 5） ---------- */
   const recentSessions = useMemo(
@@ -138,8 +145,6 @@ function Dashboard() {
       message.error(`记录关机失败：${(e as Error).message}`);
     }
   };
-
-  const liveDurationText = activeSession ? liveDuration(activeSession.bootTime) : '—';
 
   /* ---------- 最近会话表格（结构化：数字右对齐 tabular-nums + 状态胶囊） ---------- */
   const tableColumns: TableProps<BootSession>['columns'] = [
@@ -175,17 +180,24 @@ function Dashboard() {
       title: '时长',
       key: 'duration',
       align: 'right',
-      render: (_: unknown, record: BootSession) => (
-        <span
-          className="tnum"
-          style={{
-            color: record.shutdownTime ? 'var(--text-primary)' : 'var(--accent)',
-            fontFamily: "'JetBrains Mono', monospace",
-          }}
-        >
-          {fmtDuration(sessionDuration(record, now))}
-        </span>
-      ),
+      render: (_: unknown, record: BootSession) =>
+        record.shutdownTime ? (
+          <span
+            className="tnum"
+            style={{
+              color: 'var(--text-primary)',
+              fontFamily: "'JetBrains Mono', monospace",
+            }}
+          >
+            {fmtDuration(sessionDuration(record, Date.now()))}
+          </span>
+        ) : (
+          <LiveDuration
+            bootTime={record.bootTime}
+            className="tnum"
+            style={LIVE_CELL_STYLE}
+          />
+        ),
       width: 140,
     },
     {
@@ -344,17 +356,11 @@ function Dashboard() {
               }}
             >
               <Text style={{ color: 'var(--text-muted)' }}>已运行时长</Text>
-              <Text
-                strong
+              <LiveDuration
+                bootTime={activeSession?.bootTime ?? null}
                 className="tnum"
-                style={{
-                  color: 'var(--accent)',
-                  fontFamily: "'JetBrains Mono', monospace",
-                  fontSize: 18,
-                }}
-              >
-                {liveDurationText}
-              </Text>
+                style={LIVE_HERO_STYLE}
+              />
             </div>
             <Button
               type="primary"

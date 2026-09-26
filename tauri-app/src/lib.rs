@@ -12,7 +12,8 @@ mod commands;
 use tauri::{
     menu::{CheckMenuItem, Menu, MenuItem},
     tray::{TrayIconBuilder, TrayIconEvent, MouseButton, MouseButtonState},
-    Manager, RunEvent, WindowEvent,
+    webview::PageLoadEvent,
+    Emitter, Manager, RunEvent, WindowEvent,
 };
 
 /// 后端 API 基址：Python 启动时注入 BOOTTRACKER_PORT；
@@ -34,16 +35,36 @@ pub fn run() {
             commands::pick_file,
             commands::get_app_info,
         ])
+        // 页面加载完成后再显示窗口，消除“白屏一闪 → splash”观感；
+        // 生产模式会先加载内嵌 fallback 首页、再 navigate 到后端同源页（两次 Finished），
+        // 故仅在“后端页”加载完成时显示——否则窗口先显示内嵌页又被重载，开屏动画会重播两次。
+        // 后端 HTTP 服务在 Python 侧先于本窗口启动（见 boot-tracker.py），导航必然可达。
+        .on_page_load(|webview, payload| {
+            if !matches!(payload.event(), PageLoadEvent::Finished) {
+                return;
+            }
+            let loaded = payload.url().to_string();
+            let ready = match std::env::var("BOOTTRACKER_PORT") {
+                // 开发模式未注入端口：首次加载完成即显示
+                Err(_) => true,
+                // 生产模式：等导航到后端同源页完成再显示，跳过内嵌 fallback 首页
+                Ok(port) => loaded.starts_with(&format!("http://127.0.0.1:{}", port)),
+            };
+            if ready {
+                let _ = webview.show();
+                let _ = webview.set_focus();
+            }
+        })
         .setup(|app| {
             // 获取主窗口
             let window = app.get_webview_window("main")
                 .expect("main window not found");
 
-            // 保险：显式设置尺寸 + show + set_focus，防止窗口被创建为 14x14 最小化态
+            // 保险：显式设置尺寸，防止窗口被创建为 14x14 最小化态；
+            // 不在此处 show：窗口配置为 visible=false，等页面加载完成后
+            // 由 on_page_load 显示，避免白屏闪烁与开屏动画重播
             use tauri::PhysicalSize;
             let _ = window.set_size(PhysicalSize::new(960, 760));
-            let _ = window.show();
-            let _ = window.set_focus();
 
             // 由 Python 启动时注入 BOOTTRACKER_PORT：导航到后端同源页面，
             // 保证前端 /api 相对路径请求直达 HTTP 后端（与原 WebEngine 行为一致）；
@@ -54,12 +75,24 @@ pub fn run() {
                 }
             }
 
+            // 安全网：极端情况下（后端页加载事件未命中 URL 门控）避免窗口永久隐藏，
+            // 4 秒后无条件显示一次（若已显示则为无害幂等）
+            let fallback = window.clone();
+            std::thread::spawn(move || {
+                std::thread::sleep(std::time::Duration::from_secs(4));
+                let _ = fallback.show();
+                let _ = fallback.set_focus();
+            });
+
             // 拦截窗口关闭事件：隐藏而非退出（与 PyQt5 行为一致）
             let window_clone = window.clone();
             window.on_window_event(move |event| {
                 if let WindowEvent::CloseRequested { api, .. } = event {
                     api.prevent_close();
                     let _ = window_clone.hide();
+                    // 通知前端窗口已隐藏：暂停轮询与每秒定时器，消除托盘态后台空转。
+                    // WebView2 不保证随窗口 hide() 触发 visibilitychange，故用原生事件兜底。
+                    let _ = window_clone.emit("window-visibility", false);
                 }
             });
 
@@ -101,6 +134,7 @@ pub fn run() {
                             if let Some(window) = app.get_webview_window("main") {
                                 let _ = window.show();
                                 let _ = window.set_focus();
+                                let _ = window.emit("window-visibility", true);
                             }
                         }
                         "toggle_widget" => {
@@ -151,6 +185,7 @@ pub fn run() {
                         if let Some(window) = app.get_webview_window("main") {
                             let _ = window.show();
                             let _ = window.set_focus();
+                            let _ = window.emit("window-visibility", true);
                         }
                     }
                 })

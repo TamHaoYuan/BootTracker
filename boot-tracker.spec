@@ -11,8 +11,8 @@ a = Analysis(
     ['boot-tracker.py'],
     pathex=[],
     binaries=[
-        # 隧道功能依赖（运行时从 _RESOURCE_DIR 解析）
-        ('cloudflared.exe', '.'),
+        # 隧道功能依赖（开发态位于 vendor/，运行时从 _RESOURCE_DIR 解析）
+        ('vendor/cloudflared.exe', '.'),
         # Tauri 主窗口可执行文件（新版本默认 UI，运行时从 APP_DIR/tauri-app 解析）
         ('tauri-app/target/release/boot-tracker.exe', 'tauri-app/target/release'),
         # Rust 桌面小组件可执行文件（运行时从 APP_DIR/tauri-widget 解析）

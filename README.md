@@ -89,7 +89,7 @@ cd frontend && npm install && npm run build && cd ..
 python boot-tracker.py
 ```
 
-> Tunnel feature requires `cloudflared.exe` in the project root.
+> Tunnel feature requires `vendor\cloudflared.exe` (download from the [cloudflared releases](https://github.com/cloudflare/cloudflared/releases)).
 
 ### Development
 
@@ -126,8 +126,8 @@ Output: `dist/BootTracker/开机记录.exe` (onedir).
 Then build the installer with the bundled Inno Setup:
 
 ```bash
-tools\inno-setup\ISCC.exe boot-tracker.iss
-# → installer_output/BootTracker-Setup-x.y.z.exe
+tools\inno-setup\ISCC.exe packaging\boot-tracker.iss
+# → packaging/installer_output/BootTracker-Setup-x.y.z.exe
 ```
 
 ## Project Structure
@@ -136,7 +136,6 @@ tools\inno-setup\ISCC.exe boot-tracker.iss
 BootTracker/
 ├── boot-tracker.py        # App entry (instance lock → session → backup → server → window → watchdog)
 ├── boot-tracker.spec      # PyInstaller config (onedir)
-├── boot-tracker.iss       # Inno Setup installer script
 ├── server/                # Python backend package
 │   ├── config.py          # Ports, paths, version
 │   ├── data_store.py      # SQLite storage (sessions / trash / backups)
@@ -152,9 +151,12 @@ BootTracker/
 ├── tauri-app/             # Tauri v2 desktop shell (Rust): window + tray + watchdog
 ├── tauri-widget/          # Rust desktop widget (+ widget-src React frontend)
 ├── tests/                 # pytest backend tests
-├── scripts/               # dev.bat / build.bat
-├── static/                # Icons + uploaded background images
-└── deprecated/            # Archived legacy code (PyQt5, old frontend, JSON store)
+├── scripts/               # dev.bat / build.bat / tunnel.bat / switch-dpi.bat
+├── packaging/             # installer.py / installer.spec / boot-tracker.iss / installer-lang / installer_output
+├── vendor/                # Runtime binaries (cloudflared.exe, 7z.exe) — not in git
+├── tools/                 # Local build tools (Inno Setup, WebView2 bootstrapper)
+├── docs/                  # Design docs & plans
+└── static/                # Icons + uploaded background images
 ```
 
 ## API Overview

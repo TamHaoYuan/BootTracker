@@ -1,19 +1,24 @@
 # -*- mode: python ; coding: utf-8 -*-
 """安装器打包配置（onefile 单 exe 安装包）
 
-构建命令： pyinstaller installer.spec --noconfirm
+构建命令（项目根目录执行）： pyinstaller packaging\installer.spec --noconfirm
 输出: dist/BootTracker-Setup.exe
 """
+import os
+
 block_cipher = None
 
+# spec 位于 packaging/，项目根为其上一级（SPECPATH = 本 spec 所在目录）
+_ROOT = os.path.normpath(os.path.join(SPECPATH, '..'))
+
 a = Analysis(
-    ['installer.py'],
+    [os.path.join(SPECPATH, 'installer.py')],
     pathex=[],
     binaries=[],
     datas=[
-        ('payload.7z', '.'),
-        ('7z.exe', '.'),
-        ('icon.ico', '.'),
+        (os.path.join(_ROOT, 'payload.7z'), '.'),
+        (os.path.join(_ROOT, 'vendor', '7z.exe'), '.'),
+        (os.path.join(_ROOT, 'icon.ico'), '.'),
     ],
     hiddenimports=[
         'win32com.client',
@@ -61,5 +66,5 @@ exe = EXE(
     upx=False,
     runtime_tmpdir=None,
     console=False,  # GUI 安装器
-    icon='icon.ico',
+    icon=os.path.join(_ROOT, 'icon.ico'),
 )

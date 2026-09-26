@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect } from 'react';
 import { useSessionStore } from '../stores/sessionStore';
 import { dataApi } from '../api/data';
+import { useVisibleInterval } from './useVisibleInterval';
 import type { BootData } from '../api/types';
 
 /** 数据加载与刷新 */
@@ -39,16 +40,11 @@ export function useBootData() {
     void refresh();
   }, [refresh]);
 
-  // 自动轮询：每 5 秒静默同步一次，与小组件（3秒轮询）保持短延迟同步
-  // 用 ref 持有最新 silentRefresh，避免 effect 频繁重建定时器
-  const refreshRef = useRef(silentRefresh);
-  refreshRef.current = silentRefresh;
-  useEffect(() => {
-    const timer = setInterval(() => {
-      void refreshRef.current();
-    }, 5000);
-    return () => clearInterval(timer);
-  }, []);
+  // 自动轮询：每 5 秒静默同步一次，与小组件（3秒轮询）保持短延迟同步。
+  // 窗口隐藏（托盘 / 最小化）时自动暂停，恢复可见时立即补拉一次——消除后台空转。
+  useVisibleInterval(() => {
+    void silentRefresh();
+  }, 5000);
 
   return { data, loading, error, refresh };
 }

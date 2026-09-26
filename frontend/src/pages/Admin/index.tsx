@@ -34,15 +34,22 @@ import {
 import dayjs, { Dayjs } from 'dayjs';
 
 import { useBootData } from '../../hooks/useBootData';
-import { fmtFullTime, fmtDuration, liveDuration } from '../../stores/sessionStore';
+import { fmtFullTime, fmtDuration } from '../../stores/sessionStore';
 import { dataApi } from '../../api/data';
 import { backupApi } from '../../api/backup';
 import { trashApi, softDeleteSession } from '../../api/trash';
 import { statsApi } from '../../api/stats';
 import type { BootSession, OverviewStats, TrashData } from '../../api/types';
 import StatusPill from '../../components/StatusPill';
+import LiveDuration from '../../components/LiveDuration';
 
 const { Title, Text } = Typography;
+
+/* LiveDuration 调用点的稳定 style 引用：避免每次父渲染生成新对象使 memo 失效 */
+const LIVE_CELL_STYLE: React.CSSProperties = {
+  fontFamily: 'JetBrains Mono, monospace',
+  color: 'var(--accent)',
+};
 
 /* ================= 导出工具（与 Records 共享行为，自包含副本） ================= */
 
@@ -97,13 +104,6 @@ function Admin() {
 
   /* ---------- 状态 ---------- */
   const [activeTab, setActiveTab] = useState('manage');
-  const [now, setNow] = useState<number>(Date.now());
-
-  // 每秒刷新 now，使运行中的会话时长实时更新
-  useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(timer);
-  }, []);
 
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [editingModalOpen, setEditingModalOpen] = useState(false);
@@ -120,12 +120,6 @@ function Admin() {
 
   const [overview, setOverview] = useState<OverviewStats | null>(null);
   const [overviewLoading, setOverviewLoading] = useState(false);
-
-  /* ---------- 实时时长 tick ---------- */
-  useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(t);
-  }, []);
 
   /* ---------- 加载附属数据（组件挂载即加载） ---------- */
   const loadTrash = useCallback(async () => {
@@ -218,24 +212,18 @@ function Admin() {
       key: 'duration',
       width: 150,
       align: 'right',
-      render: (_v, record) => {
-        if (!record.shutdownTime) {
-          const dur = now - new Date(record.bootTime).getTime();
-          return (
-            <span
-              className="tnum"
-              style={{ fontFamily: 'JetBrains Mono, monospace', color: 'var(--accent)' }}
-            >
-              {dur > 0 ? fmtDuration(dur) : liveDuration(record.bootTime)}
-            </span>
-          );
-        }
-        return (
+      render: (_v, record) =>
+        record.shutdownTime ? (
           <span className="tnum" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
             {fmtDuration(record.duration)}
           </span>
-        );
-      },
+        ) : (
+          <LiveDuration
+            bootTime={record.bootTime}
+            className="tnum"
+            style={LIVE_CELL_STYLE}
+          />
+        ),
     },
     {
       title: '状态',

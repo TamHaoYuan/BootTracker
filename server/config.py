@@ -24,8 +24,13 @@ LOG_FILE = os.path.join(LOG_DIR, "boot-tracker.log")
 BACKUP_DIR = os.path.join(APP_DIR, "backup")
 UPLOAD_DIR = os.path.join(APP_DIR, "static", "uploads")
 TUNNEL_LOG_FILE = os.path.join(LOG_DIR, "tunnel.log")
-CLOUDFLARED_PATH = os.path.join(_RESOURCE_DIR, "cloudflared.exe")
+VENDOR_DIR = os.path.join(APP_DIR, "vendor")
+# 打包模式：cloudflared 由 spec 打进 _MEIPASS；开发模式：位于 vendor/
+CLOUDFLARED_PATH = os.path.join(
+    _RESOURCE_DIR if getattr(sys, "frozen", False) else VENDOR_DIR,
+    "cloudflared.exe",
+)
 
 MAX_BACKUPS = 30
-APP_VERSION = "1.1.0"
+APP_VERSION = "2.0.1"
 UPDATE_CHECK_URL = ""

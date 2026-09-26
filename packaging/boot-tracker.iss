@@ -1,18 +1,23 @@
 ; -*- coding: utf-8 -*-
 ; Inno Setup 安装脚本 — 开机记录 (BootTracker)
 ;
-; 编译方法：
-;   1. 安装 Inno Setup 6（https://jrsoftware.org/isdl.php）
-;   2. 用 Inno Setup Compiler 打开本文件 boot-tracker.iss
-;   3. 点击 Build → Compile（或 Ctrl+F9）
-;   4. 生成的安装程序位于 installer_output\BootTracker-Setup-2.0.1.exe
+; 编译方法（项目根目录执行）：
+;   tools\inno-setup\ISCC.exe packaging\boot-tracker.iss
+;   或用 Inno Setup Compiler 打开 packaging\boot-tracker.iss 点击 Compile
+;   生成的安装程序位于 packaging\installer_output\BootTracker-Setup-2.0.1.exe
 ;
-; 前置条件：已通过 PyInstaller 生成 dist\BootTracker\ 目录
+; 前置条件：已通过 PyInstaller 生成 dist\BootTracker\ 目录（本脚本位于 packaging/，相对路径以本目录为基准）
 ;   命令： pyinstaller boot-tracker.spec --noconfirm
+;
+; 版本号：默认 2.0.1；CI 编译时通过 /DAppVer=x.y.z 传入 tag 版本
+
+#ifndef AppVer
+  #define AppVer "2.0.1"
+#endif
 
 [Setup]
 AppName=开机记录
-AppVersion=2.0.1
+AppVersion={#AppVer}
 AppPublisher=BootTracker
 AppPublisherURL=https://github.com/boottracker
 AppSupportURL=https://github.com/boottracker
@@ -29,15 +34,16 @@ DisableProgramGroupPage=yes
 DisableDirPage=no
 WizardStyle=modern
 OutputDir=installer_output
-OutputBaseFilename=BootTracker-Setup-2.0.1
-SetupIconFile=icon.ico
+OutputBaseFilename=BootTracker-Setup-{#AppVer}
+SetupIconFile=..\icon.ico
 UninstallDisplayIcon={app}\开机记录.exe
 UninstallDisplayName=开机记录
 ; 安装时若应用正在运行，提示关闭
 CloseApplications=force
 
 [Languages]
-Name: "chinesesimp"; MessagesFile: "compiler:Languages\ChineseSimplified.isl"
+; 中文语言包随仓库分发（installer-lang/），本地与 CI 通用
+Name: "chinesesimp"; MessagesFile: "installer-lang\ChineseSimplified.isl"
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
@@ -46,7 +52,7 @@ Name: "autostart"; Description: "开机自动启动"; GroupDescription: "附加�
 
 [Files]
 ; 打包生成的整个应用目录
-Source: "dist\BootTracker\*"; DestDir: "{app}"; Flags: recursesubdirs ignoreversion createallsubdirs
+Source: "..\dist\BootTracker\*"; DestDir: "{app}"; Flags: recursesubdirs ignoreversion createallsubdirs
 
 [Icons]
 ; 开始菜单快捷方式

@@ -43,7 +43,7 @@ static/uploads/
 # 打包输出
 dist/
 build/
-installer_output/
+packaging/installer_output/
 payload.7z
 *.spec
 !boot-tracker.spec

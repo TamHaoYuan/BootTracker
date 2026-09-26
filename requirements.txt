@@ -1,3 +1,2 @@
-PyQt5>=5.15
 pystray>=0.19
 Pillow>=9.0

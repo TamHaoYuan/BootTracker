@@ -89,7 +89,7 @@ cd frontend && npm install && npm run build && cd ..
 python boot-tracker.py
 ```
 
-> 隧道功能需要项目根目录下的 `cloudflared.exe`。
+> 隧道功能需要 `vendor\cloudflared.exe`（从 [cloudflared releases](https://github.com/cloudflare/cloudflared/releases) 下载）。
 
 ### 开发模式
 
@@ -126,8 +126,8 @@ scripts\build.bat
 再用内置 Inno Setup 编译安装程序：
 
 ```bash
-tools\inno-setup\ISCC.exe boot-tracker.iss
-# → installer_output/BootTracker-Setup-x.y.z.exe
+tools\inno-setup\ISCC.exe packaging\boot-tracker.iss
+# → packaging/installer_output/BootTracker-Setup-x.y.z.exe
 ```
 
 ## 项目结构
@@ -136,7 +136,6 @@ tools\inno-setup\ISCC.exe boot-tracker.iss
 BootTracker/
 ├── boot-tracker.py        # 应用入口（实例锁 → 会话 → 备份 → 服务器 → 窗口 → 看门狗）
 ├── boot-tracker.spec      # PyInstaller 打包配置（onedir）
-├── boot-tracker.iss       # Inno Setup 安装脚本
 ├── server/                # Python 后端服务包
 │   ├── config.py          # 端口、路径、版本常量
 │   ├── data_store.py      # SQLite 存储（会话 / 回收站 / 备份）
@@ -152,9 +151,12 @@ BootTracker/
 ├── tauri-app/             # Tauri v2 桌面壳（Rust）：窗口 + 托盘 + 看门狗
 ├── tauri-widget/          # Rust 桌面小组件（+ widget-src React 前端）
 ├── tests/                 # pytest 后端测试
-├── scripts/               # dev.bat / build.bat
-├── static/                # 图标 + 上传的背景图
-└── deprecated/            # 已归档旧代码（PyQt5、旧前端、JSON 存储）
+├── scripts/               # dev.bat / build.bat / tunnel.bat / switch-dpi.bat
+├── packaging/             # installer.py / installer.spec / boot-tracker.iss / installer-lang / installer_output
+├── vendor/                # 运行时二进制（cloudflared.exe、7z.exe）—— 不入库
+├── tools/                 # 本地构建工具（Inno Setup、WebView2 引导器）
+├── docs/                  # 设计文档与方案
+└── static/                # 图标 + 上传的背景图
 ```
 
 ## API 概览

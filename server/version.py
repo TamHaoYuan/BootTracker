@@ -78,9 +78,12 @@ def _version_compare(v1, v2):
 
 def check_update():
     import urllib.request
+    # 用运行时真实版本（version.json）作为“当前版本”，与 /api/version 显示保持一致；
+    # 避免 config.APP_VERSION 常量滞后导致误报更新
+    current = load_version().get("version", APP_VERSION)
     if not UPDATE_CHECK_URL:
         return {
-            "current": APP_VERSION,
+            "current": current,
             "latest": None,
             "hasUpdate": False,
             "message": "未配置更新检查地址",
@@ -88,14 +91,14 @@ def check_update():
     try:
         req = urllib.request.Request(
             UPDATE_CHECK_URL,
-            headers={"User-Agent": f"BootTracker/{APP_VERSION}"},
+            headers={"User-Agent": f"BootTracker/{current}"},
         )
         with urllib.request.urlopen(req, timeout=10) as resp:
             data = json.loads(resp.read().decode("utf-8"))
         latest_ver = data.get("version", "")
-        has_update = _version_compare(latest_ver, APP_VERSION) > 0
+        has_update = _version_compare(latest_ver, current) > 0
         return {
-            "current": APP_VERSION,
+            "current": current,
             "latest": latest_ver,
             "hasUpdate": has_update,
             "url": data.get("url", ""),
@@ -103,7 +106,7 @@ def check_update():
         }
     except Exception as e:
         return {
-            "current": APP_VERSION,
+            "current": current,
             "latest": None,
             "hasUpdate": False,
             "message": f"检查失败: {e}",

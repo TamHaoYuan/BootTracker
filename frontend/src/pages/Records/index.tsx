@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
-// useEffect 用于下方定时器
+import { useMemo, useState } from 'react';
 import {
+  App as AntdApp,
   Button,
   Card,
   DatePicker,
@@ -22,23 +22,28 @@ import {
 import { useNavigate } from 'react-router-dom';
 import dayjs, { Dayjs } from 'dayjs';
 
-import * as XLSX from 'xlsx';
-
 import { useBootData } from '../../hooks/useBootData';
 import { useUiStore, type RecordsView } from '../../stores/uiStore';
 import {
   fmtFullTime,
   fmtDuration,
-  liveDuration,
   isoToLocalDate,
   getLocalToday,
 } from '../../stores/sessionStore';
 import type { BootSession } from '../../api/types';
 import StatusPill from '../../components/StatusPill';
 import EmptyState from '../../components/EmptyState';
+import LiveDuration from '../../components/LiveDuration';
 
 const { RangePicker } = DatePicker;
 const { Title, Text } = Typography;
+
+/* LiveDuration 调用点的稳定 style 引用：避免每次父渲染生成新对象使 memo 失效 */
+const LIVE_CELL_STYLE: React.CSSProperties = {
+  fontFamily: 'JetBrains Mono, monospace',
+  color: 'var(--accent)',
+};
+const LIVE_TL_STYLE: React.CSSProperties = { color: 'var(--accent)' };
 
 /* ================= 导出工具（与 Admin 共享行为，自包含副本） ================= */
 
@@ -86,8 +91,10 @@ function exportCSV(sessions: BootSession[]): void {
 }
 
 // 迁移旧版 app.js exportXLSX：开机记录 sheet + 统计 sheet
-function exportXLSX(sessions: BootSession[]): void {
+// xlsx 体积大且仅导出时用，改为按需动态加载，不进主包
+async function exportXLSX(sessions: BootSession[]): Promise<void> {
   if (sessions.length === 0) return;
+  const XLSX = await import('xlsx');
 
   // Sheet 1: 开机记录
   const headers = ['序号', '开机时间', '关机时间', '会话时长', '状态'];
@@ -150,19 +157,13 @@ function fmtClock(iso: string): string {
 function Records() {
   const navigate = useNavigate();
   const { data, loading, refresh } = useBootData();
+  const { message } = AntdApp.useApp();
 
   /* ---------- 状态 ---------- */
   const [dateRange, setDateRange] = useState<DateRange>(null);
-  const [now, setNow] = useState<number>(Date.now());
   // 视图模式跨会话记住（uiStore → localStorage）
   const view = useUiStore((s) => s.recordsView);
   const setView = useUiStore((s) => s.setRecordsView);
-
-  /* ---------- 实时时长 tick（用于进行中会话） ---------- */
-  useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(t);
-  }, []);
 
   /* ---------- 筛选 ---------- */
   const filteredSessions = useMemo(() => {
@@ -186,6 +187,7 @@ function Records() {
   /* ---------- 时间轴分组（Structured 模式：按天分组，日期倒序） ---------- */
   const TIMELINE_LIMIT = 100;
   const timelineGroups = useMemo(() => {
+    const now = Date.now();
     const map = new Map<string, BootSession[]>();
     for (const s of filteredSessions.slice(0, TIMELINE_LIMIT)) {
       const d = isoToLocalDate(s.bootTime);
@@ -214,7 +216,7 @@ function Records() {
       });
     }
     return groups;
-  }, [filteredSessions, now]);
+  }, [filteredSessions]);
 
   /* ---------- 表格列（只读，结构化：数字右对齐 tabular-nums + 状态胶囊） ---------- */
   const baseColumns: ColumnsType<BootSession> = [
@@ -259,24 +261,18 @@ function Records() {
       key: 'duration',
       width: 150,
       align: 'right',
-      render: (_v, record) => {
-        if (!record.shutdownTime) {
-          const dur = now - new Date(record.bootTime).getTime();
-          return (
-            <span
-              className="tnum"
-              style={{ fontFamily: 'JetBrains Mono, monospace', color: 'var(--accent)' }}
-            >
-              {dur > 0 ? fmtDuration(dur) : liveDuration(record.bootTime)}
-            </span>
-          );
-        }
-        return (
+      render: (_v, record) =>
+        record.shutdownTime ? (
           <span className="tnum" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
             {fmtDuration(record.duration)}
           </span>
-        );
-      },
+        ) : (
+          <LiveDuration
+            bootTime={record.bootTime}
+            className="tnum"
+            style={LIVE_CELL_STYLE}
+          />
+        ),
     },
     {
       title: '状态',
@@ -314,7 +310,11 @@ function Records() {
             </Button>
             <Button
               icon={<FileExcelOutlined />}
-              onClick={() => exportXLSX(filteredSessions)}
+              onClick={() => {
+                exportXLSX(filteredSessions).catch(() =>
+                  message.error('导出 XLSX 失败，请重试'),
+                );
+              }}
               disabled={filteredSessions.length === 0}
             >
               导出 XLSX
@@ -410,10 +410,6 @@ function Records() {
                 <div className="tl-list">
                   {g.items.map((s) => {
                     const active = !s.shutdownTime;
-                    const dur = active
-                      ? Math.max(0, now - new Date(s.bootTime).getTime())
-                      : (s.duration ??
-                        new Date(s.shutdownTime!).getTime() - new Date(s.bootTime).getTime());
                     return (
                       <div key={s.id} className={`tl-item${active ? ' tl-active' : ''}`}>
                         <span className="tl-dot" />
@@ -421,12 +417,20 @@ function Records() {
                           {fmtClock(s.bootTime)} → {s.shutdownTime ? fmtClock(s.shutdownTime) : '现在'}
                         </span>
                         <span className="tl-meta">
-                          <span
-                            className="tl-dur"
-                            style={active ? { color: 'var(--accent)' } : undefined}
-                          >
-                            {fmtDuration(dur)}
-                          </span>
+                          {active ? (
+                            <LiveDuration
+                              bootTime={s.bootTime}
+                              className="tl-dur"
+                              style={LIVE_TL_STYLE}
+                            />
+                          ) : (
+                            <span className="tl-dur">
+                              {fmtDuration(
+                                s.duration ??
+                                new Date(s.shutdownTime!).getTime() - new Date(s.bootTime).getTime(),
+                              )}
+                            </span>
+                          )}
                           {active ? (
                             <StatusPill tone="accent">进行中</StatusPill>
                           ) : (
