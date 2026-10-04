@@ -4,10 +4,10 @@
   "version": "2.0.1",
   "identifier": "com.boottracker.app",
   "build": {
-    "frontendDist": "../dist-static",
-    "devUrl": "http://localhost:5173",
-    "beforeDevCommand": "",
-    "beforeBuildCommand": ""
+    "frontendDist": "ui/dist",
+    "devUrl": "http://127.0.0.1:5174",
+    "beforeDevCommand": "cd ui && trunk serve",
+    "beforeBuildCommand": "cd ui && trunk build --release"
   },
   "app": {
     "withGlobalTauri": true,

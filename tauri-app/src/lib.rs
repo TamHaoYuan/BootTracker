@@ -35,25 +35,16 @@ pub fn run() {
             commands::pick_file,
             commands::get_app_info,
         ])
-        // 页面加载完成后再显示窗口，消除“白屏一闪 → splash”观感；
-        // 生产模式会先加载内嵌 fallback 首页、再 navigate 到后端同源页（两次 Finished），
-        // 故仅在“后端页”加载完成时显示——否则窗口先显示内嵌页又被重载，开屏动画会重播两次。
-        // 后端 HTTP 服务在 Python 侧先于本窗口启动（见 boot-tracker.py），导航必然可达。
+        // 页面加载完成后再显示窗口，消除“白屏一闪 → splash”观感。
+        // 桌面前端为内嵌的纯 Rust/WASM（ui/dist），不再导航到后端同源页面；
+        // API 由前端跨源请求 http://127.0.0.1:{port}/api/*（后端已全通 CORS），
+        // 端口经 IPC get_app_info 下发给前端（BOOTTRACKER_PORT 由 Python 注入本进程）。
         .on_page_load(|webview, payload| {
             if !matches!(payload.event(), PageLoadEvent::Finished) {
                 return;
             }
-            let loaded = payload.url().to_string();
-            let ready = match std::env::var("BOOTTRACKER_PORT") {
-                // 开发模式未注入端口：首次加载完成即显示
-                Err(_) => true,
-                // 生产模式：等导航到后端同源页完成再显示，跳过内嵌 fallback 首页
-                Ok(port) => loaded.starts_with(&format!("http://127.0.0.1:{}", port)),
-            };
-            if ready {
-                let _ = webview.show();
-                let _ = webview.set_focus();
-            }
+            let _ = webview.show();
+            let _ = webview.set_focus();
         })
         .setup(|app| {
             // 获取主窗口
@@ -66,16 +57,7 @@ pub fn run() {
             use tauri::PhysicalSize;
             let _ = window.set_size(PhysicalSize::new(960, 760));
 
-            // 由 Python 启动时注入 BOOTTRACKER_PORT：导航到后端同源页面，
-            // 保证前端 /api 相对路径请求直达 HTTP 后端（与原 WebEngine 行为一致）；
-            // 开发模式（cargo tauri dev）不设此变量，仍用 devUrl/内嵌资源。
-            if let Ok(port) = std::env::var("BOOTTRACKER_PORT") {
-                if let Ok(url) = tauri::Url::parse(&format!("http://127.0.0.1:{}/", port)) {
-                    let _ = window.navigate(url);
-                }
-            }
-
-            // 安全网：极端情况下（后端页加载事件未命中 URL 门控）避免窗口永久隐藏，
+            // 安全网：极端情况下（页面加载事件未命中）避免窗口永久隐藏，
             // 4 秒后无条件显示一次（若已显示则为无害幂等）
             let fallback = window.clone();
             std::thread::spawn(move || {

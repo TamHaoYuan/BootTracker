@@ -1,0 +1,298 @@
+/* ========== CSS 变量定义（从 static/css/style.css 完整迁移，Dark Gallery 风格） ========== */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;700&family=JetBrains+Mono:wght@400;600&display=swap');
+
+:root {
+  /* 主题色 */
+  --accent: #8b5cf6;
+  --accent2: #d946ef;
+  --accent-light: #a78bfa;
+  --accent-rgb: 139, 92, 246;
+
+  /* 背景色 — Dark Gallery：极深炭黑底，卡片如展品亮起 */
+  --bg-page: #0a0a0c;
+  --bg-page2: #111114;
+  --bg-page3: #08080a;
+  --bg-card: rgba(28, 28, 32, 0.96);
+  --bg-card-light: rgba(42, 42, 48, 0.85);
+  --bg-card-hover: rgba(48, 48, 54, 0.96);
+  --bg-card-darker: rgba(20, 20, 24, 0.85);
+  --bg-card-light-darker: rgba(36, 36, 42, 0.7);
+  --bg-card-semidark: rgba(24, 24, 28, 0.92);
+  --bg-card-semilight: rgba(44, 44, 50, 0.88);
+  --bg-input: rgba(28, 28, 32, 0.96);
+  --bg-overlay: rgba(0, 0, 0, 0.7);
+  --bg-content: rgba(18, 18, 22, 0.5);
+
+  /* 文字色 — 高对比，画廊式克制 */
+  --text-primary: #fafafa;
+  --text-secondary: #c4c4cc;
+  --text-muted: #8b8b94;
+  --text-muted-rgb: 139, 139, 148;
+  --text-disabled: #52525b;
+
+  /* 状态色 */
+  --text-success: #6ee7b7;
+  --text-success-strong: #a7f3d0;
+  --text-success-dark: #10b981;
+  --text-success-rgb: 16, 185, 129;
+  --text-danger: #f87171;
+  --text-danger-light: #fca5a5;
+  --text-danger-dark: #ef4444;
+  --text-danger-rgb: 239, 68, 68;
+
+  /* 边框色 — 白色细线，画廊分隔感 */
+  --border-color: rgba(255, 255, 255, 0.1);
+  --border-light: rgba(255, 255, 255, 0.06);
+  --border-muted: rgba(255, 255, 255, 0.16);
+
+  /* 阴影 — 深邃投影，增强悬浮层次 */
+  --shadow-color: rgba(0, 0, 0, 0.5);
+  --shadow-strong: rgba(0, 0, 0, 0.4);
+  --dark-overlay: rgba(0, 0, 0, 0.6);
+
+  /* 滚动条 */
+  --scrollbar-thumb: rgba(255, 255, 255, 0.2);
+
+  /* 非线性缓动曲线 — 全局动效统一引用 */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-smooth: cubic-bezier(0.45, 0, 0.15, 1);
+  --ease-in-out-quart: cubic-bezier(0.76, 0, 0.24, 1);
+
+  /* 玻璃态效果 */
+  --glass-light: rgba(255, 255, 255, 0.06);
+  --glass-light-strong: rgba(255, 255, 255, 0.1);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-border-strong: rgba(255, 255, 255, 0.15);
+  --glass-hover: rgba(255, 255, 255, 0.05);
+  --glass-active: rgba(255, 255, 255, 0.03);
+  --glass-focus: rgba(255, 255, 255, 0.1);
+  --glass-highlight: rgba(255, 255, 255, 0.2);
+  --glass-selected: rgba(255, 255, 255, 0.05);
+
+  /* 浅色模式基础 */
+  --light-card-bg: rgba(255, 255, 255, 0.75);
+  --light-card-bg-strong: rgba(255, 255, 255, 0.88);
+  --light-card-bg-high: rgba(255, 255, 255, 0.95);
+  --light-input-bg: rgba(255, 255, 255, 0.92);
+  --light-border: rgba(0, 0, 0, 0.08);
+  --light-border-strong: rgba(0, 0, 0, 0.12);
+  --light-shadow: rgba(0, 0, 0, 0.06);
+  --light-text-dark: #1e293b;
+  --light-text-darker: #0f172a;
+  --dark-card-bg: rgba(28, 28, 28, 0.9);
+}
+
+/* ========== 主题变体 ========== */
+[data-theme="purple"] {
+  --accent: #8b5cf6;
+  --accent2: #d946ef;
+  --accent-light: #a78bfa;
+  --accent-rgb: 139, 92, 246;
+}
+[data-theme="blue"] {
+  --accent: #3b82f6;
+  --accent2: #06b6d4;
+  --accent-light: #60a5fa;
+  --accent-rgb: 59, 130, 246;
+  --bg-page: #080a10;
+  --bg-page2: #0c0e16;
+  --bg-page3: #060810;
+}
+[data-theme="green"] {
+  --accent: var(--text-success-dark);
+  --accent2: #34d399;
+  --accent-light: var(--text-success);
+  --accent-rgb: 16, 185, 129;
+  --bg-page: #080f0c;
+  --bg-page2: #0c140e;
+  --bg-page3: #060c08;
+}
+[data-theme="orange"] {
+  --accent: #f97316;
+  --accent2: #f59e0b;
+  --accent-light: #fbbf24;
+  --accent-rgb: 249, 115, 22;
+  --bg-page: #100c08;
+  --bg-page2: #14100a;
+  --bg-page3: #0c0806;
+}
+[data-theme="gray"] {
+  --accent: var(--text-muted);
+  --accent2: var(--text-secondary);
+  --accent-light: var(--text-primary);
+  --accent-rgb: 148, 163, 184;
+  --bg-page: #0c0c0e;
+  --bg-page2: #101012;
+  --bg-page3: #08080a;
+}
+[data-theme="mica"] {
+  --accent: var(--text-primary);
+  --accent2: var(--text-secondary);
+  --accent-light: #f1f5f9;
+  --accent-rgb: 148, 163, 184;
+}
+[data-theme="material-you"] {
+  --accent: #d0bcff;
+  --accent2: #b69df8;
+  --accent-light: #eaddff;
+  --accent-rgb: 208, 188, 255;
+  --bg-page: #121212;
+  --bg-page2: #1a1a1a;
+  --bg-page3: #0e0e0e;
+}
+
+/* ========== 浅色模式完整覆盖（从旧版 body.light-mode 迁移） ========== */
+body.light-mode {
+  --bg-page: #f8fafc;
+  --bg-page2: #f1f5f9;
+  --bg-page3: #e2e8f0;
+  --bg-card: rgba(255, 255, 255, 0.85);
+  --bg-card-light: rgba(241, 245, 249, 0.8);
+  --bg-card-hover: rgba(226, 232, 240, 0.9);
+  --bg-card-darker: rgba(241, 245, 249, 0.6);
+  --bg-card-light-darker: rgba(226, 232, 240, 0.6);
+  --bg-card-semidark: rgba(255, 255, 255, 0.9);
+  --bg-card-semilight: rgba(241, 245, 249, 0.9);
+  --bg-input: rgba(255, 255, 255, 0.95);
+  --bg-overlay: rgba(0, 0, 0, 0.3);
+  --bg-content: rgba(248, 250, 252, 0.5);
+
+  --text-primary: #1e293b;
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
+  --text-muted-rgb: 148, 163, 184;
+  --text-disabled: #cbd5e1;
+
+  --text-success: #059669;
+  --text-success-strong: #047857;
+  --text-success-dark: #10b981;
+  --text-success-rgb: 16, 185, 129;
+  --text-danger: #dc2626;
+  --text-danger-light: #ef4444;
+  --text-danger-dark: #b91c1c;
+  --text-danger-rgb: 239, 68, 68;
+
+  --border-color: rgba(0, 0, 0, 0.08);
+  --border-light: rgba(0, 0, 0, 0.05);
+  --border-muted: rgba(0, 0, 0, 0.12);
+
+  --shadow-color: rgba(0, 0, 0, 0.06);
+  --shadow-strong: rgba(0, 0, 0, 0.08);
+  --dark-overlay: rgba(0, 0, 0, 0.15);
+
+  --scrollbar-thumb: rgba(148, 163, 184, 0.4);
+
+  --glass-light: rgba(0, 0, 0, 0.03);
+  --glass-light-strong: rgba(0, 0, 0, 0.05);
+  --glass-border: rgba(0, 0, 0, 0.06);
+  --glass-border-strong: rgba(0, 0, 0, 0.1);
+  --glass-hover: rgba(0, 0, 0, 0.03);
+  --glass-active: rgba(0, 0, 0, 0.02);
+  --glass-focus: rgba(0, 0, 0, 0.05);
+  --glass-highlight: rgba(0, 0, 0, 0.1);
+  --glass-selected: rgba(0, 0, 0, 0.03);
+}
+
+/* ========== 全局基础样式 ========== */
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
+  /* 禁用根滚动容器的橡皮筋/链式滚动，防止滚动到边界露出 WebView2 默认白底（断层） */
+  overscroll-behavior: none;
+}
+
+html, body, #root {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  font-family: 'Inter', 'Noto Sans SC', -apple-system, BlinkMacSystemFont,
+    'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+  background: var(--bg-page);
+  color: var(--text-primary);
+  transition: background-color 0.4s ease, color 0.3s ease;
+}
+
+/* 主题切换时所有元素平滑过渡（旧版核心体验） */
+body * {
+  transition: background-color 0.35s ease, color 0.3s ease, border-color 0.35s ease,
+    box-shadow 0.35s ease, transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ========== 滚动条 ========== */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 5px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(var(--text-muted-rgb), 0.55);
+  background-clip: padding-box;
+  border: 2px solid transparent;
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
+}
+
+/* ========== 自定义背景遮罩（旧版 has-custom-bg） ========== */
+body.has-custom-bg::after {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.55);
+  pointer-events: none;
+  z-index: 0;
+}
+
+body.light-mode.has-custom-bg::after {
+  background: rgba(255, 255, 255, 0.65);
+}
+
+/* ========== Mica 玻璃覆盖（仅 Tauri 原生窗口） ==========
+ * 背景降为半透明，让系统 Mica 云母材质透出；
+ * 浏览器回退环境无 data-native 标记，不受影响。
+ */
+html[data-native="tauri"][data-theme="mica"] {
+  --bg-page: rgba(18, 18, 22, 0.45);
+  --bg-page2: rgba(24, 24, 28, 0.5);
+  --bg-page3: rgba(12, 12, 16, 0.4);
+  --bg-card: rgba(28, 28, 32, 0.55);
+  --bg-card-light: rgba(42, 42, 48, 0.45);
+  --bg-card-hover: rgba(48, 48, 54, 0.65);
+  --bg-card-darker: rgba(20, 20, 24, 0.5);
+  --bg-card-semidark: rgba(24, 24, 28, 0.55);
+  --bg-card-semilight: rgba(44, 44, 50, 0.5);
+  --bg-input: rgba(28, 28, 32, 0.6);
+}
+
+/* Mica 浅色模式：云母亮底 + 白色薄纱卡片 */
+html[data-native="tauri"][data-theme="mica"] body.light-mode {
+  --bg-page: rgba(248, 250, 252, 0.45);
+  --bg-page2: rgba(241, 245, 249, 0.5);
+  --bg-page3: rgba(226, 232, 240, 0.4);
+  --bg-card: rgba(255, 255, 255, 0.55);
+  --bg-card-light: rgba(241, 245, 249, 0.5);
+  --bg-card-hover: rgba(226, 232, 240, 0.65);
+  --bg-card-darker: rgba(241, 245, 249, 0.4);
+  --bg-card-semidark: rgba(255, 255, 255, 0.6);
+  --bg-card-semilight: rgba(241, 245, 249, 0.6);
+  --bg-input: rgba(255, 255, 255, 0.7);
+}

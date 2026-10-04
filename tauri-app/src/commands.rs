@@ -115,12 +115,21 @@ pub async fn pick_file(filter: Option<String>) -> BridgeResult<Option<String>> {
 }
 
 /// 获取应用版本信息
+///
+/// 桌面端前端（纯 Rust/WASM）启动时通过本命令获取后端端口：
+/// Python 启动本进程时注入 BOOTTRACKER_PORT，这里回传给前端用于拼接 API 基址。
 #[tauri::command]
 pub fn get_app_info(app: AppHandle) -> BridgeResult<serde_json::Value> {
     let version = app.package_info().version.to_string();
+    let port: u16 = std::env::var("BOOTTRACKER_PORT")
+        .ok()
+        .and_then(|p| p.parse().ok())
+        .unwrap_or(18792);
+    let mode = if cfg!(debug_assertions) { "dev" } else { "production" };
     let info = serde_json::json!({
         "version": version,
-        "frozen": false
+        "port": port,
+        "mode": mode,
     });
     BridgeResult::success(info)
 }

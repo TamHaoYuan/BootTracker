@@ -1,0 +1,57 @@
+[package]
+name = "boot-tracker-ui"
+version = "2.0.1"
+edition = "2021"
+description = "BootTracker 桌面端纯 Rust 前端（Leptos CSR → WASM，经 Tauri 加载）"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+leptos = { version = "0.8", features = ["csr"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+js-sys = "0.3"
+rust_xlsxwriter = "0.95"
+console_error_panic_hook = "0.1"
+gloo-utils = "0.3"
+
+[dependencies.web-sys]
+version = "0.3"
+features = [
+    "Window",
+    "Document",
+    "Element",
+    "HtmlElement",
+    "HtmlInputElement",
+    "HtmlSelectElement",
+    "HtmlAnchorElement",
+    "HtmlTextAreaElement",
+    "File",
+    "FileList",
+    "FormData",
+    "Blob",
+    "Url",
+    "Request",
+    "RequestInit",
+    "Response",
+    "Headers",
+    "KeyboardEvent",
+    "MouseEvent",
+    "Event",
+    "EventTarget",
+    "Location",
+    "Storage",
+    "MediaQueryList",
+    "Clipboard",
+    "Navigator",
+    "BlobPropertyBag",
+    "VisibilityState",
+]
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
