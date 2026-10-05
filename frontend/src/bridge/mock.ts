@@ -3,7 +3,14 @@
  * 在纯浏览器环境（vite dev server）替代 Tauri IPC，使前端无需启动后端也能开发
  */
 import { BridgeError, BusinessError } from './errors';
-import type { BridgeResult } from './tauri';
+/**
+ * 原生桥返回结构——原由 tauri.ts 导出。
+ * 桌面端已改为纯 Rust 前端（egui），Tauri IPC 与 tauri.ts 一并移除，
+ * 这里本地定义，避免 mock 依赖已不存在的模块。
+ */
+export type BridgeResult<T> =
+  | { ok: true; data: T }
+  | { ok: false; code: string; message: string };
 
 type MockHandler = (
   args: Record<string, unknown>,

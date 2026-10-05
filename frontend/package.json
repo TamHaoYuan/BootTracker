@@ -1,9 +1,9 @@
 {
   "name": "boottracker-frontend",
   "private": true,
-  "version": "0.1.0",
+  "version": "2.1.0",
   "type": "module",
-  "description": "BootTracker 前端工程 — Vite + React + TS + Ant Design + Zustand",
+  "description": "BootTracker 网页前端（浏览器端）— Vite + React + TS + Ant Design + Zustand",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
@@ -22,8 +22,6 @@
     "zustand": "^4.5.5"
   },
   "devDependencies": {
-    "@tauri-apps/api": "^2.11.1",
-    "@tauri-apps/cli": "^2.11.4",
     "@testing-library/jest-dom": "^6.5.0",
     "@testing-library/react": "^16.0.1",
     "@types/node": "^26.2.0",

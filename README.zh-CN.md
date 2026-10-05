@@ -15,7 +15,7 @@
   </a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT" /></a>
   <img src="https://img.shields.io/badge/platform-Windows%2010%2F11-0078D6?logo=windows&logoColor=white" alt="Platform" />
-  <img src="https://img.shields.io/badge/version-2.0.1-8b5cf6" alt="Version" />
+  <img src="https://img.shields.io/badge/version-2.1.0-8b5cf6" alt="Version" />
 </p>
 
 <p align="center">
@@ -40,7 +40,7 @@
 - **图表页** — 柱状 / 折线 / 饼图趋势 + 类 GitHub 贡献热力图
 
 ### 界面与主题
-- **Tauri v2 原生窗口**，沉浸式暗色标题栏（不可用时回退系统浏览器）
+- **纯原生 Rust 窗口**（egui/eframe，GPU 渲染）——无 WebView、无 HTML、无内嵌浏览器
 - **7 套主题色** — 紫 / 蓝 / 绿 / 橙 / 灰 / Mica 云母（半透明原生材质）/ Material You，均支持深浅色模式
 - **记住用户设置** — 主题、侧栏折叠、视图模式跨会话持久化
 - **非线性动画系统** — spring / expo 缓动；启动动画遵循系统「减少动态效果」偏好
@@ -59,9 +59,10 @@
 | 层级 | 技术 |
 |---|---|
 | 后端 | Python 3 标准库 `http.server`，模块化路由注册表，SQLite |
-| 前端 | Vite + React 18 + TypeScript + Ant Design 5 + Zustand |
-| 桌面壳 | Tauri v2（Rust）— 窗口、托盘、看门狗 |
-| 桌面小组件 | Rust + Tauri v2（独立二进制，主题联动） |
+| 网页前端（浏览器） | Vite + React 18 + TypeScript + Ant Design 5 + Zustand（产物 dist-static/） |
+| 桌面主程序（App） | 纯原生 Rust — egui + eframe（`desktop/`，wgpu 直接渲染，非网页、非 WebView） |
+| 桌面小组件 | 纯原生 Rust — egui + eframe（`desktop-widget/`，无边框置顶半透明浮窗） |
+| 桌面与网页 | 两者彻底分离：各自独立调用后端 REST API，互不依赖 |
 | 隧道 | cloudflared |
 | 日志 | 标准 `logging`，`logs/` 目录每日轮转 |
 | 测试 | pytest（后端）· Vitest（前端） |
@@ -76,16 +77,20 @@
 
 ### 方式二：源码运行
 
-**环境要求：** Windows 10/11 · Python 3.10+ · Node.js 20+ · Rust 工具链（Tauri 窗口与小组件）
+**环境要求：** Windows 10/11 · Python 3.10+ · Node.js 20+ · Rust 工具链（原生桌面程序 + 小组件）
 
 ```bash
 # 1. Python 依赖
 pip install -r requirements.txt
 
-# 2. 前端依赖 + 构建（输出到 dist-static/）
+# 2. 网页前端依赖 + 构建（浏览器访问，输出到 dist-static/）
 cd frontend && npm install && npm run build && cd ..
 
-# 3. 运行（启动后端 + Tauri 窗口，不可用时回退浏览器）
+# 3. 原生桌面程序与浮窗小组件（纯 Rust，无需 wasm32 / trunk）
+cd desktop && cargo build --release && cd ..
+cd desktop-widget && cargo build --release && cd ..
+
+# 4. 运行（启动后端 + 原生窗口）
 python boot-tracker.py
 ```
 
@@ -94,7 +99,7 @@ python boot-tracker.py
 ### 开发模式
 
 ```bash
-# 后端 + Vite dev server（HMR），加 --tauri 启用原生窗口
+# 后端 + Vite dev server（HMR），加 --desktop 启用纯原生窗口
 scripts\dev.bat
 ```
 
@@ -120,7 +125,7 @@ cd frontend && npx vitest run      # 前端
 scripts\build.bat
 ```
 
-流程：前端构建 → Tauri release → 小组件 release → 图标拷贝 → PyInstaller。
+流程：网页前端构建 → 原生桌面程序 release → 原生小组件 release → 图标拷贝 → PyInstaller。
 输出：`dist/BootTracker/开机记录.exe`（onedir 模式）。
 
 再用内置 Inno Setup 编译安装程序：
@@ -141,20 +146,20 @@ BootTracker/
 │   ├── data_store.py      # SQLite 存储（会话 / 回收站 / 备份）
 │   ├── http_handler.py    # HTTP 服务器 + 静态资源服务
 │   ├── settings.py        # settings.json + 开机自启
-│   ├── tauri_window.py    # Tauri 窗口控制器
+│   ├── tauri_window.py    # 原生窗口控制器（启动 desktop/ 的 egui 主程序）
 │   ├── tray.py            # pystray 回退托盘（仅浏览器模式）
-│   ├── widget.py          # Rust 小组件进程管理
+│   ├── widget.py          # 原生小组件进程管理（desktop-widget/）
 │   ├── tunnel.py          # Cloudflare Tunnel 隧道
 │   └── routes/            # 模块化 API 路由（data/trash/settings/stats/backup/version/tunnel/window）
-├── frontend/              # Vite + React + TS + AntD 前端源码
+├── frontend/              # 网页前端源码（Vite + React + TS + AntD，浏览器端）
 │   └── src/{api,bridge,components,hooks,layouts,pages,stores,styles}
-├── tauri-app/             # Tauri v2 桌面壳（Rust）：窗口 + 托盘 + 看门狗
-├── tauri-widget/          # Rust 桌面小组件（+ widget-src React 前端）
+├── desktop/               # 纯原生桌面主程序（Rust + egui/eframe）：窗口 + 托盘 + 全部页面
+├── desktop-widget/        # 纯原生桌面浮窗小组件（Rust + egui/eframe）
 ├── tests/                 # pytest 后端测试
 ├── scripts/               # dev.bat / build.bat / tunnel.bat / switch-dpi.bat
 ├── packaging/             # installer.py / installer.spec / boot-tracker.iss / installer-lang / installer_output
 ├── vendor/                # 运行时二进制（cloudflared.exe、7z.exe）—— 不入库
-├── tools/                 # 本地构建工具（Inno Setup、WebView2 引导器）
+├── tools/                 # 本地构建工具（Inno Setup）
 ├── docs/                  # 设计文档与方案
 └── static/                # 图标 + 上传的背景图
 ```

@@ -1,0 +1,30 @@
+[package]
+name = "boot-tracker-desktop"
+version = "2.1.0"
+description = "BootTracker 纯原生桌面前端 (egui/eframe)"
+authors = ["BootTracker"]
+edition = "2021"
+default-run = "boot-tracker"
+
+[[bin]]
+name = "boot-tracker"
+path = "src/main.rs"
+
+[dependencies]
+egui = "0.29"
+eframe = "0.29"
+# 成熟图标库：Phosphor Icons（egui 生态事实标准，MIT，~1500 图标 / 多字重）
+# 0.7.x 依赖 egui ^0.29，与本项目一致；0.8+ 要求 egui 0.30，不兼容。
+egui-phosphor = "0.7.3"
+tray-icon = "0.24"
+ureq = { version = "2", features = ["json"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+rfd = "0.14"
+image = "0.25"
+chrono = "0.4"
+rust_xlsxwriter = "0.99.1"
+
+[profile.release]
+opt-level = 2
+lto = false

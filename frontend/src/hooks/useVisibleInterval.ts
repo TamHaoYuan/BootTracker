@@ -13,10 +13,6 @@ import { useEffect, useRef } from 'react';
  * ------------------------------------------------------------------ */
 type VisibilityListener = (visible: boolean) => void;
 
-function inTauri(): boolean {
-  return typeof window !== 'undefined' && '__TAURI__' in window;
-}
-
 let docVisible =
   typeof document === 'undefined' ? true : document.visibilityState === 'visible';
 let nativeVisible = true; // 非 Tauri 环境恒为 true；Tauri 下由 window-visibility 更新
@@ -46,19 +42,7 @@ function ensureInitialized(): void {
     });
   }
 
-  if (inTauri()) {
-    // 动态导入：非 Tauri 环境（含单测 / 纯浏览器）不会触及 @tauri-apps/api
-    void import('@tauri-apps/api/event')
-      .then(({ listen }) =>
-        listen<boolean>('window-visibility', (e) => {
-          nativeVisible = e.payload !== false;
-          notify();
-        }),
-      )
-      .catch(() => {
-        /* 忽略：退回仅用 document 信号 */
-      });
-  }
+  // 网页端仅用 document 信号（桌面端原生信号由 Rust 前端自行处理）
 }
 
 function subscribeVisibility(listener: VisibilityListener): () => void {

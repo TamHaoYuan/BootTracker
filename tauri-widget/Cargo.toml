@@ -1,6 +1,6 @@
 [package]
 name = "boot-tracker-widget"
-version = "2.0.1"
+version = "2.1.0"
 description = "BootTracker 桌面小组件（Rust 实现，替代旧版 Tkinter 组件）"
 authors = ["BootTracker"]
 edition = "2021"

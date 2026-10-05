@@ -1,6 +1,6 @@
 [package]
 name = "boot-tracker"
-version = "2.0.1"
+version = "2.1.0"
 description = "BootTracker - 开机记录桌面应用"
 authors = ["BootTracker"]
 edition = "2021"

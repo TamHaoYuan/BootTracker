@@ -15,7 +15,7 @@
   </a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT" /></a>
   <img src="https://img.shields.io/badge/platform-Windows%2010%2F11-0078D6?logo=windows&logoColor=white" alt="Platform" />
-  <img src="https://img.shields.io/badge/version-2.0.1-8b5cf6" alt="Version" />
+  <img src="https://img.shields.io/badge/version-2.1.0-8b5cf6" alt="Version" />
 </p>
 
 <p align="center">
@@ -40,7 +40,7 @@
 - **Charts page** — bar / line / pie trends plus a GitHub-style boot heatmap
 
 ### UI & Theming
-- **Tauri v2 native window** with immersive dark titlebar (falls back to the system browser)
+- **Pure native Rust window** (egui/eframe, GPU-rendered) — no WebView, no HTML, no embedded browser
 - **7 accent themes** — Purple / Blue / Green / Orange / Gray / Mica (translucent, Windows-native) / Material You, each with dark & light modes
 - **Remembered preferences** — theme, sidebar state and view modes persist across sessions
 - **Non-linear motion system** — spring & expo easing, splash screen respects `prefers-reduced-motion`
@@ -60,8 +60,8 @@
 |---|---|
 | Backend | Python 3 stdlib `http.server`, modular route registry, SQLite |
 | Frontend | Vite + React 18 + TypeScript + Ant Design 5 + Zustand |
-| Desktop shell | Tauri v2 (Rust) — window, tray, watchdog |
-| Desktop widget | Rust + Tauri v2 (separate binary, theme-synced) |
+| Desktop app | Pure native Rust — egui + eframe (`desktop/`), wgpu direct rendering, not a web page / no WebView |
+| Desktop widget | Pure native Rust — egui + eframe (`desktop-widget/`), separate binary, theme-synced |
 | Tunnel | cloudflared |
 | Logging | stdlib `logging`, daily rotation under `logs/` |
 | Testing | pytest (backend) · Vitest (frontend) |
@@ -76,7 +76,7 @@ Download `BootTracker-Setup-x.y.z.exe` from [Releases](https://github.com/TamHao
 
 ### Option B — From source
 
-**Requirements:** Windows 10/11 · Python 3.10+ · Node.js 20+ · Rust toolchain (for Tauri window & widget)
+**Requirements:** Windows 10/11 · Python 3.10+ · Node.js 20+ · Rust toolchain (for the native egui window & widget)
 
 ```bash
 # 1. Python dependencies
@@ -85,7 +85,7 @@ pip install -r requirements.txt
 # 2. Frontend dependencies + build (outputs to dist-static/)
 cd frontend && npm install && npm run build && cd ..
 
-# 3. Run (starts backend + Tauri window; falls back to browser)
+# 3. Run (starts backend + native egui window; falls back to browser)
 python boot-tracker.py
 ```
 
@@ -94,7 +94,7 @@ python boot-tracker.py
 ### Development
 
 ```bash
-# Backend + Vite dev server with HMR (add --tauri for the native window)
+# Backend + Vite dev server with HMR (add --tauri for the native egui window)
 scripts\dev.bat
 ```
 
@@ -120,7 +120,7 @@ cd frontend && npx vitest run      # frontend
 scripts\build.bat
 ```
 
-Runs: frontend build → Tauri release build → widget release build → icon copy → PyInstaller.
+Runs: frontend build → desktop (egui) release build → widget release build → icon copy → PyInstaller.
 Output: `dist/BootTracker/开机记录.exe` (onedir).
 
 Then build the installer with the bundled Inno Setup:
@@ -141,15 +141,16 @@ BootTracker/
 │   ├── data_store.py      # SQLite storage (sessions / trash / backups)
 │   ├── http_handler.py    # HTTP server + static file serving
 │   ├── settings.py        # settings.json + autostart
-│   ├── tauri_window.py    # Tauri window controller
+│   ├── tauri_window.py    # Native window controller (launches the desktop/ egui app)
 │   ├── tray.py            # pystray fallback tray (browser mode only)
 │   ├── widget.py          # Rust widget process manager
 │   ├── tunnel.py          # Cloudflare Tunnel
 │   └── routes/            # Modular API routes (data/trash/settings/stats/backup/version/tunnel/window)
 ├── frontend/              # Vite + React + TS + AntD source
 │   └── src/{api,bridge,components,hooks,layouts,pages,stores,styles}
-├── tauri-app/             # Tauri v2 desktop shell (Rust): window + tray + watchdog
-├── tauri-widget/          # Rust desktop widget (+ widget-src React frontend)
+├── desktop/               # Native desktop app (Rust, egui/eframe): window + tray + watchdog
+├── desktop-widget/        # Native desktop widget (Rust, egui/eframe) — current
+├── tauri-widget/          # Legacy Tauri widget (superseded by desktop-widget)
 ├── tests/                 # pytest backend tests
 ├── scripts/               # dev.bat / build.bat / tunnel.bat / switch-dpi.bat
 ├── packaging/             # installer.py / installer.spec / boot-tracker.iss / installer-lang / installer_output

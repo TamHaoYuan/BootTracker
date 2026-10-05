@@ -13,10 +13,10 @@ a = Analysis(
     binaries=[
         # 隧道功能依赖（开发态位于 vendor/，运行时从 _RESOURCE_DIR 解析）
         ('vendor/cloudflared.exe', '.'),
-        # Tauri 主窗口可执行文件（新版本默认 UI，运行时从 APP_DIR/tauri-app 解析）
-        ('tauri-app/target/release/boot-tracker.exe', 'tauri-app/target/release'),
-        # Rust 桌面小组件可执行文件（运行时从 APP_DIR/tauri-widget 解析）
-        ('tauri-widget/target/release/boot-tracker-widget.exe', 'tauri-widget/target/release'),
+        # 纯原生桌面主程序（egui/eframe，运行时从 desktop/target/release 解析）
+        ('desktop/target/release/boot-tracker.exe', 'desktop/target/release'),
+        # 纯原生桌面小组件（egui/eframe 浮窗，运行时从 desktop-widget/target/release 解析）
+        ('desktop-widget/target/release/boot-tracker-widget.exe', 'desktop-widget/target/release'),
     ],
     datas=[
         # 前端构建产物（Vite build 输出）

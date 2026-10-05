@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Tauri 窗口管理模块
+"""桌面窗口管理模块（纯原生 egui/eframe）
 
-替代原 PyQt5 WebEngine 窗口层，通过子进程方式启动 Tauri 应用。
+替代原 PyQt5 WebEngine 窗口层与 Tauri WebView 壳，通过子进程方式启动
+纯原生 Rust 桌面程序（无 WebView / 无 HTML）。
 
 设计要点：
-- Tauri 应用作为独立进程运行，Python 后端通过 HTTP API 保持通信
-- 开发模式：使用 `cargo tauri dev` 启动（支持热重载）
-- 生产模式：运行编译好的 Tauri 可执行文件
+- 桌面程序作为独立进程运行，经 HTTP 访问 Python 后端 REST API
+- 开发模式：使用 `cargo run` 启动
+- 生产模式：运行编译好的原生可执行文件（desktop/target/.../boot-tracker.exe）
 - 窗口生命周期由 Python 主进程管理（启动/停止）
 - 打包后二进制在 _RESOURCE_DIR，开发时在 APP_DIR
 - raise_tauri_window / set_tauri_theme 通过 Windows API 直接操作窗口句柄
@@ -27,7 +28,7 @@ logger = logging.getLogger(__name__)
 _tauri_proc: subprocess.Popen | None = None
 _proc_lock = threading.Lock()
 
-# Tauri 主窗口标题（与 tauri-app/tauri.conf.json 一致）
+# 桌面主窗口标题（与原生程序设置的窗口标题一致，FindWindowW 据此定位）
 _WINDOW_TITLE = "开机记录"
 
 
@@ -38,18 +39,18 @@ def _get_tauri_binary_path() -> str:
     """
     for base in (APP_DIR, _RESOURCE_DIR):
         for build in ("release", "debug"):
-            path = os.path.join(base, "tauri-app", "target", build, "boot-tracker.exe")
+            path = os.path.join(base, "desktop", "target", build, "boot-tracker.exe")
             if os.path.exists(path):
                 return path
     return ""
 
 
 def _get_tauri_source_dir() -> str:
-    """获取 Tauri 源码目录（开发模式用）"""
+    """获取桌面端源码目录（开发模式用）"""
     for base in (APP_DIR, _RESOURCE_DIR):
-        cargo_toml = os.path.join(base, "tauri-app", "Cargo.toml")
+        cargo_toml = os.path.join(base, "desktop", "Cargo.toml")
         if os.path.exists(cargo_toml):
-            return os.path.join(base, "tauri-app")
+            return os.path.join(base, "desktop")
     return ""
 
 
@@ -92,13 +93,8 @@ def start_tauri(dev_mode: bool = False) -> bool:
                 return False
             cmd = [binary]
             env = os.environ.copy()
-            # 注入端口：Tauri 窗口导航到后端同源页面，/api 请求直达 Python 后端
+            # 注入端口：原生桌面端经此端口访问 Python 后端 REST API
             env["BOOTTRACKER_PORT"] = str(PORT)
-
-        # WebView2 数据目录重定向到项目内（兼容沙箱环境，避免 AppData 访问限制导致窗口空白）
-        webview_dir = os.path.join(APP_DIR, "data", "webview-app")
-        os.makedirs(webview_dir, exist_ok=True)
-        env["WEBVIEW2_USER_DATA_FOLDER"] = webview_dir
 
         try:
             logger.info(f"[tauri] starting: {' '.join(cmd)}")

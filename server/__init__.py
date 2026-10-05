@@ -10,8 +10,8 @@
 - version: 版本管理（版本号、更新检查）
 - tunnel: 隧道管理（Cloudflare Tunnel）
 - tray: 系统托盘（图标、菜单）
-- widget: 桌面小组件（Rust/Tauri 组件进程管理）
-- tauri_window: 桌面窗口（Tauri v2，新版本默认）
+- widget: 桌面小组件（纯原生 Rust 浮窗进程管理）
+- tauri_window: 桌面窗口（纯原生 egui/eframe，新版本默认）
 """
 
 from .config import (

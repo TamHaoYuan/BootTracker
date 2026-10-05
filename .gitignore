@@ -11,6 +11,7 @@ node_modules/
 
 # Rust 构建产物（tauri-app / tauri-widget）
 target/
+target-rel/
 
 # WebView2 运行时用户数据目录
 data/

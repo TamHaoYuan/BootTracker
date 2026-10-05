@@ -7,13 +7,10 @@ import {
   BarChartOutlined,
   SettingOutlined,
   ToolOutlined,
-  MenuFoldOutlined,
-  MenuUnfoldOutlined,
   MenuOutlined,
 } from '@ant-design/icons';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useThemeStore } from '../stores/themeStore';
-import { useUiStore } from '../stores/uiStore';
 import { useTheme } from '../hooks/useTheme';
 import { useSettingsStore } from '../stores/settingsStore';
 import { dataApi } from '../api/data';
@@ -120,11 +117,11 @@ function AppLayout() {
   const { toggleMode } = useTheme();
   const { settings } = useSettingsStore();
 
-  // 桌面：折叠状态跨会话记住（uiStore）+ 悬浮展开
-  const collapsed = useUiStore((s) => s.sidebarCollapsed);
-  const setCollapsed = useUiStore((s) => s.setSidebarCollapsed);
+  // 桌面：侧栏常态折叠，鼠标悬浮时临时展开。
+  // 之前同时存在「顶栏手动折叠按钮 + 悬浮展开」两套折叠入口（功能重复），
+  // 现已去掉手动按钮，只保留悬浮展开——折叠状态无需再持久化。
   const [hoverExpanded, setHoverExpanded] = useState(false);
-  const effectiveCollapsed = collapsed && !hoverExpanded;
+  const effectiveCollapsed = !hoverExpanded;
 
   // 移动：抽屉
   const [isMobile, setIsMobile] = useState(false);
@@ -425,10 +422,7 @@ function AppLayout() {
             width={SIDER_WIDTH}
             collapsedWidth={SIDER_COLLAPSED_WIDTH}
             collapsed={effectiveCollapsed}
-            onCollapse={setCollapsed}
-            collapsible
-            trigger={null}
-            onMouseEnter={() => { if (collapsed) setHoverExpanded(true); }}
+            onMouseEnter={() => setHoverExpanded(true)}
             onMouseLeave={() => setHoverExpanded(false)}
             style={{
               background: 'var(--bg-card)',
@@ -469,8 +463,9 @@ function AppLayout() {
         <Layout
           style={{
             background: 'transparent',
-            marginLeft: isMobile ? 0 : (collapsed ? SIDER_COLLAPSED_WIDTH : SIDER_WIDTH),
-            transition: 'margin-left 0.2s var(--ease-out-expo)',
+            // 侧栏是 fixed 悬浮层：内容区始终按折叠宽度留白，悬浮展开时侧栏
+            // 浮在内容之上覆盖，而不是把内容挤走（避免 hover 时整页抖动）
+            marginLeft: isMobile ? 0 : SIDER_COLLAPSED_WIDTH,
           }}
         >
           <Header
@@ -488,21 +483,13 @@ function AppLayout() {
             }}
           >
             <Space size="middle" align="center">
-              {isMobile ? (
+              {/* 移动端才需要菜单按钮；桌面端侧栏靠悬浮展开，不再放折叠按钮 */}
+              {isMobile && (
                 <Tooltip title="打开菜单">
                   <Button
                     type="text"
                     icon={<MenuOutlined />}
                     onClick={() => setDrawerOpen(true)}
-                    style={{ fontSize: 16, color: 'var(--text-secondary)' }}
-                  />
-                </Tooltip>
-              ) : (
-                <Tooltip title={collapsed ? '展开侧栏' : '收起侧栏'}>
-                  <Button
-                    type="text"
-                    icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-                    onClick={() => setCollapsed(!collapsed)}
                     style={{ fontSize: 16, color: 'var(--text-secondary)' }}
                   />
                 </Tooltip>

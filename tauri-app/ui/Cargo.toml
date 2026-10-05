@@ -1,6 +1,6 @@
 [package]
 name = "boot-tracker-ui"
-version = "2.0.1"
+version = "2.1.0"
 edition = "2021"
 description = "BootTracker 桌面端纯 Rust 前端（Leptos CSR → WASM，经 Tauri 加载）"
 

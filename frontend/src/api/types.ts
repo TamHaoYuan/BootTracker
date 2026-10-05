@@ -160,6 +160,15 @@ export interface WindowThemeResponse extends OkResponse {
   applied: boolean;
 }
 
+/* ================ 桌面小组件 ================ */
+/** POST /api/widget-sync：重启浮窗进程，使其立即拉取最新设置与数据 */
+export interface WidgetSyncResponse extends OkResponse {
+  /** 是否真正触发了重启同步（未启用小组件时为 false） */
+  synced: boolean;
+  /** 小组件开关当前状态 */
+  enabled: boolean;
+}
+
 /* ================ 上传 ================ */
 export interface UploadBgResponse extends OkResponse {
   path: string; // 图片访问相对路径，例如 /static/uploads/bg.jpg

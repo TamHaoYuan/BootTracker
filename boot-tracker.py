@@ -179,7 +179,8 @@ def main() -> None:
     logger.info(f"[startup] starting server on {bind_addr}:{PORT}")
     start_server(bind_addr=bind_addr, port=PORT)
 
-    # 打开主界面：新版本默认 Tauri，不可用时回退系统浏览器
+    # 打开主界面：默认纯原生 egui 桌面端（desktop/），不可用时回退系统浏览器
+    # 注：下方变量/函数名仍沿用历史 tauri 命名，实际启动的是 desktop/ 的 egui 程序
     use_tauri = False
     
     if is_tauri_available():
@@ -187,7 +188,7 @@ def main() -> None:
         dev_mode = os.environ.get("BOOTTRACKER_DEV_MODE", "").lower() in ("1", "true", "dev")
         use_tauri = start_tauri(dev_mode=dev_mode)
         if use_tauri:
-            logger.info("[startup] main UI opened as Tauri window")
+            logger.info("[startup] main UI opened as native desktop window (egui)")
     
     if not use_tauri:
         logger.info("[startup] no native window available, falling back to browser")

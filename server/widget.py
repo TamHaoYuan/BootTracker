@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""桌面小组件模块 — 启动 Rust 小组件进程
+"""桌面小组件模块 — 启动纯原生 Rust 浮窗进程
 
-替代旧版 Tkinter 组件（见 deprecated/widget_tkinter.py）。
-小组件本体是独立 Tauri 小窗口（tauri-widget crate）：
-- 无边框、置顶、可拖动、位置记忆（settings.json widgetPosition）
+替代旧版 Tkinter 组件（见 deprecated/widget_tkinter.py）与原 Tauri 小组件。
+小组件本体是独立原生浮窗（desktop-widget crate，egui/eframe）：
+- 无边框、置顶、半透明、可拖动、位置记忆（settings.json widgetPosition）
 - 每 30 秒从 /api/data 拉取数据
-- 右键菜单：打开主界面 / 隐藏组件（组件自行写 settings 后退出）
+- 右键菜单：打开主界面 / 隐藏组件（PUT settings widgetEnabled=false 后由本模块停止）
 
 本模块仅负责进程生命周期管理，接口与旧版保持一致：
 start_widget(port, stop_event) / stop_widget() / is_widget_running()
@@ -30,7 +30,7 @@ def _get_widget_binary_path() -> str:
     """
     for base in (APP_DIR, _RESOURCE_DIR):
         for build in ("release", "debug"):
-            path = os.path.join(base, "tauri-widget", "target", build, "boot-tracker-widget.exe")
+            path = os.path.join(base, "desktop-widget", "target", build, "boot-tracker-widget.exe")
             if os.path.exists(path):
                 return path
     return ""
@@ -59,17 +59,13 @@ def start_widget(port, stop_event) -> None:
         if not binary:
             logger.error(
                 "[widget] no compiled widget binary found; build first: "
-                "cd tauri-widget && cargo build --release"
+                "cd desktop-widget && cargo build --release"
             )
             return
 
         env = os.environ.copy()
         env["BOOTTRACKER_PORT"] = str(port)
         env["BOOTTRACKER_SETTINGS"] = SETTINGS_FILE
-        # WebView2 数据目录重定向到项目内（兼容沙箱环境，避免 AppData 访问限制导致窗口空白）
-        webview_dir = os.path.join(APP_DIR, "data", "webview-widget")
-        os.makedirs(webview_dir, exist_ok=True)
-        env["WEBVIEW2_USER_DATA_FOLDER"] = webview_dir
 
         try:
             _widget_proc = subprocess.Popen(

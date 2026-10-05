@@ -4,15 +4,15 @@
 ; 编译方法（项目根目录执行）：
 ;   tools\inno-setup\ISCC.exe packaging\boot-tracker.iss
 ;   或用 Inno Setup Compiler 打开 packaging\boot-tracker.iss 点击 Compile
-;   生成的安装程序位于 packaging\installer_output\BootTracker-Setup-2.0.1.exe
+;   生成的安装程序位于 packaging\installer_output\BootTracker-Setup-2.1.0.exe
 ;
 ; 前置条件：已通过 PyInstaller 生成 dist\BootTracker\ 目录（本脚本位于 packaging/，相对路径以本目录为基准）
 ;   命令： pyinstaller boot-tracker.spec --noconfirm
 ;
-; 版本号：默认 2.0.1；CI 编译时通过 /DAppVer=x.y.z 传入 tag 版本
+; 版本号：默认 2.1.0；CI 编译时通过 /DAppVer=x.y.z 传入 tag 版本
 
 #ifndef AppVer
-  #define AppVer "2.0.1"
+  #define AppVer "2.1.0"
 #endif
 
 [Setup]

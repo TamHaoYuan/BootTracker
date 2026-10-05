@@ -5,10 +5,10 @@ $ErrorActionPreference = 'Stop'
 $scriptDir = $PSScriptRoot
 
 # 启动优先级：源码（开发/最新代码）优先，PyInstaller 打包产物兜底。
-# 注意：dist 里的 exe 可能是旧构建（如 Tauri 迁移前的版本），
+# 注意：dist 里的 exe 可能是旧构建（如迁移到纯原生 egui 桌面端之前的版本），
 # 只要项目根目录存在 boot-tracker.py 就始终跑源码版，避免误启旧版。
 
-# 1. 开发模式：Python 启动 boot-tracker.py（Python 再拉起 Tauri 子进程）
+# 1. 开发模式：Python 启动 boot-tracker.py（Python 再拉起纯原生 egui 桌面端 desktop/ 子进程）
 $launcher = Join-Path $scriptDir 'boot-tracker.py'
 $pythonw = $null
 if (Test-Path $launcher) {
@@ -42,7 +42,7 @@ if (Test-Path $launcher) {
     exit 1
 }
 
-# 2. 兜底：打包模式，直接启动 PyInstaller 产物（内含 Python + Tauri 子进程管理）
+# 2. 兜底：打包模式，直接启动 PyInstaller 产物（内含 Python + 纯原生 egui 桌面端与小组件管理）
 $packagedExe = Join-Path $scriptDir 'dist\BootTracker\开机记录.exe'
 if (Test-Path $packagedExe) {
     Start-Process -FilePath $packagedExe

@@ -1,14 +1,20 @@
 @echo off
-REM BootTracker ä¸€é”®å¼€å‘å¯åŠ¨è„šæœ?REM å¹¶è¡Œå¯åŠ¨ï¼?) Python åŽç«¯ï¼ˆboot-tracker.pyï¼? 2) Vite dev serverï¼ˆå‰ç«¯ç‹¬ç«‹å¼€å‘ï¼Œä»£ç† /api åˆ°åŽç«¯ï¼‰
+chcp 65001 >nul
+REM BootTracker Ò»¼ü¿ª·¢Æô¶¯½Å±¾
+REM ²¢ÐÐÆô¶¯£º
+REM   1) Python ºó¶Ë£¨boot-tracker.py£©
+REM   2) ÍøÒ³Ç°¶Ë dev server£¨Vite£¬5173£¬´úÀí /api µ½ºó¶Ë£©
+REM   3) --desktop Ä£Ê½¶îÍâÆô¶¯´¿Ô­Éú×ÀÃæÇ°¶Ë£¨cargo run£¬desktop/£©
 REM
-REM åŽç«¯é»˜è®¤ç«¯å£ä¸?server/config.py ä¸€è‡´ï¼š18792
-REM å‰ç«¯ dev server é»˜è®¤ç«¯å£ï¼?173ï¼ˆvite.config.ts ä¸­é…ç½®ï¼‰
+REM ºó¶ËÄ¬ÈÏ¶Ë¿ÚÓë server/config.py Ò»ÖÂ£º18792
+REM ×ÀÃæÇ°¶ËÒÑ¸ÄÎª´¿Ô­Éú Rust£¨egui/eframe£©£¬ÎÞ WebView / ÎÞ HTML¡£
 REM
-REM ç”¨æ³•ï¼šdev.bat [--tauri]  æ·»åŠ  --tauri ä½¿ç”¨ Tauri å¼€å‘æ¨¡å¼?
+REM ÓÃ·¨£ºdev.bat [--desktop]   Ìí¼Ó --desktop Æô¶¯Ô­Éú×ÀÃæÇ°¶Ë£¨cargo run£©
+
 setlocal
 cd /d "%~dp0.."
 
-REM æ£€æµ?venv Python
+REM ¼ì²â venv Python
 set "PYTHON_EXE="
 if exist ".venv\Scripts\python.exe" set "PYTHON_EXE=.venv\Scripts\python.exe"
 if not defined PYTHON_EXE (
@@ -17,28 +23,39 @@ if not defined PYTHON_EXE (
     exit /b 1
 )
 
-REM è§£æžå‚æ•°
-set "TAURI_MODE=0"
-if "%~1"=="--tauri" set "TAURI_MODE=1"
+REM ½âÎö²ÎÊý£¨--tauri ¼æÈÝ¾ÉÐ´·¨£¬Í³Ò»Ö¸ÏòÔ­Éú×ÀÃæ¶Ë£©
+set "DESKTOP_MODE=0"
+if "%~1"=="--desktop" set "DESKTOP_MODE=1"
+if "%~1"=="--tauri" set "DESKTOP_MODE=1"
 
-echo [1/2] starting BootTracker backend (HTTP on 18792) ...
-if "%TAURI_MODE%"=="1" (
-    echo       Tauri dev mode enabled
+echo [1/3] starting BootTracker backend (HTTP on 18792) ...
+if "%DESKTOP_MODE%"=="1" (
+    echo       native desktop dev mode enabled
     set "BOOTTRACKER_DEV_MODE=1"
 )
 start "BootTracker-backend" cmd /k "%PYTHON_EXE% boot-tracker.py --debug"
 
-REM ç»™åŽç«?3s å¯åŠ¨æ—¶é—´ï¼ˆHTTP æœåŠ¡ç»‘å®šç«¯å£ï¼?timeout /t 3 /nobreak >nul
+REM ¸øºó¶Ë 3s Æô¶¯Ê±¼ä£¨HTTP ·þÎñ°ó¶¨¶Ë¿Ú£©
+timeout /t 3 /nobreak >nul
 
-echo [2/2] starting Vite dev server (5173, proxy /api -> 18792) ...
+echo [2/3] starting web frontend dev server (5173, proxy /api -> 18792) ...
 cd frontend
-start "BootTracker-frontend" cmd /k "npm run dev"
+start "BootTracker-web-frontend" cmd /k "npm run dev"
 cd ..
+
+if "%DESKTOP_MODE%"=="1" (
+    echo [3/3] starting native desktop (cargo run, desktop/) ...
+    cd desktop
+    start "BootTracker-desktop" cmd /k "cargo run"
+    cd ..
+) else (
+    echo [3/3] native desktop skipped (add --desktop to enable)
+)
 
 echo.
 echo Dev servers launched:
-echo   - backend (Tauri/Qt/browser): http://127.0.0.1:18792/
-echo   - frontend Vite with HMR:     http://localhost:5173/
+echo   - backend:                 http://127.0.0.1:18792/
+echo   - web frontend (Vite/HMR): http://localhost:5173/
+if "%DESKTOP_MODE%"=="1" echo   - native desktop:           cargo run (desktop/)
 echo.
-if "%TAURI_MODE%"=="1" echo   Tauri window will open automatically.
 endlocal

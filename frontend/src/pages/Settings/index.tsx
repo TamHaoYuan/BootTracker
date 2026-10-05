@@ -25,6 +25,7 @@ import {
   UploadOutlined,
   DeleteOutlined,
   ReloadOutlined,
+  SyncOutlined,
   LogoutOutlined,
   CheckOutlined,
   CloudServerOutlined,
@@ -293,6 +294,28 @@ function Settings() {
         }
       },
     });
+  };
+
+  /** 立即同步最新设置/数据到桌面小组件（重启浮窗进程以拉取最新值） */
+  const [widgetSyncing, setWidgetSyncing] = useState(false);
+  const handleWidgetSync = async () => {
+    if (!settings?.widgetEnabled) {
+      message.info('小组件未启用，请先开启「桌面小组件」');
+      return;
+    }
+    setWidgetSyncing(true);
+    try {
+      const res = await settingsApi.widgetSync();
+      if (res?.synced) {
+        message.success('已同步，桌面小组件已刷新');
+      } else {
+        message.info('小组件未启用，未执行同步');
+      }
+    } catch (e) {
+      message.error(`同步失败：${(e as Error).message}`);
+    } finally {
+      setWidgetSyncing(false);
+    }
   };
 
   const handleQuit = async () => {
@@ -570,10 +593,23 @@ function Settings() {
             />
           </Form.Item>
           <Form.Item label={<span style={LABEL_STYLE}>桌面小组件</span>}>
-            <Switch
-              checked={settings?.widgetEnabled}
-              onChange={(v) => void updateField('widgetEnabled', v)}
-            />
+            <Space size="middle">
+              <Switch
+                checked={settings?.widgetEnabled}
+                onChange={(v) => void updateField('widgetEnabled', v)}
+              />
+              <Tooltip title="小组件靠轮询拉取（30s 数据 / 60s 设置），同步会重启浮窗立即拉取最新值">
+                <Button
+                  type="link"
+                  icon={<SyncOutlined />}
+                  loading={widgetSyncing}
+                  onClick={() => void handleWidgetSync()}
+                  style={{ padding: 0 }}
+                >
+                  同步
+                </Button>
+              </Tooltip>
+            </Space>
           </Form.Item>
         </Form>
       </Card>

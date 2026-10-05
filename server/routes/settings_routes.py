@@ -17,7 +17,7 @@ _VALID_KEYS = {
     "autoStart", "autoBackup", "backupCount", "autoCloseIdle",
     "idleCloseMinutes", "defaultChartType", "timeFormat",
     "lanAccess", "tunnelEnabled", "tunnelToken", "customDomain", "customBgImage",
-    "widgetEnabled", "appTheme",
+    "widgetEnabled", "appTheme", "widgetPosition",
 }
 
 
@@ -162,4 +162,35 @@ def toggle_widget(req, body) -> Tuple[int, Dict]:
         return 200, {"ok": True, "widgetEnabled": want_on}
     except Exception as e:
         logger.error(f"toggle_widget error: {e}")
+        return 400, {"error": str(e)}
+
+
+@post("/api/widget-sync")
+def sync_widget(req, body) -> Tuple[int, Dict]:
+    """立即把最新设置/数据同步到桌面小组件。
+
+    小组件是独立进程，靠轮询拉取（30s 数据 / 60s 设置），改完设置不会立刻生效。
+    这里重启浮窗进程——启动时 WidgetApp::new() 会立即拉一次 settings 与 data，
+    从而跳过最长 60 秒的等待。未启用小组件时直接跳过。
+    """
+    import threading
+    try:
+        settings = load_settings()
+        if not bool(settings.get("widgetEnabled", False)):
+            return 200, {"ok": True, "synced": False, "enabled": False}
+
+        def _do_sync():
+            try:
+                if is_widget_running():
+                    stop_widget()
+                start_widget(PORT, threading.Event())
+                logger.info("[settings] widget synced (restarted)")
+            except Exception as e:
+                logger.error(f"[settings] widget sync failed: {e}")
+
+        # 重启可能阻塞（停止有 5s 等待），放后台执行，路由立即返回
+        threading.Thread(target=_do_sync, daemon=True).start()
+        return 200, {"ok": True, "synced": True, "enabled": True}
+    except Exception as e:
+        logger.error(f"sync_widget error: {e}")
         return 400, {"error": str(e)}

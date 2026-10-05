@@ -20,7 +20,7 @@ from tkinter import ttk, filedialog, messagebox
 
 APP_NAME = "开机记录"
 APP_NAME_EN = "BootTracker"
-APP_VERSION = "2.0.1"
+APP_VERSION = "2.1.0"
 EXE_NAME = "开机记录.exe"
 PAYLOAD = "payload.7z"
 SEVENZ = "7z.exe"
