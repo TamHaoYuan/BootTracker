@@ -12,6 +12,12 @@ node_modules/
 # Rust 构建产物（tauri-app / tauri-widget）
 target/
 target-rel/
+target-ux/
+
+# 临时/工具产物（UX 截图、i18n 校验脚本、ACL 恢复备份）
+.acl-recovery/
+.i18n/
+.ux-shots/
 
 # WebView2 运行时用户数据目录
 data/

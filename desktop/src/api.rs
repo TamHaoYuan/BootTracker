@@ -94,6 +94,13 @@ pub struct Anomalies {
 
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct LanguageOnly {
+    #[serde(default)]
+    pub language: String,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct AppSettings {
     #[serde(default)]
     pub auto_start: bool,
@@ -123,8 +130,18 @@ pub struct AppSettings {
     pub app_mode: String,
     #[serde(default)]
     pub app_theme: String,
+    /// 界面缩放比例（1.0 = 100%），由设置页滑块或 Ctrl+滚轮/加减号写入
+    #[serde(default = "default_ui_scale")]
+    pub ui_scale: f32,
+    /// 界面语言：`zh-CN` / `en-US`（后端已在首次运行时按系统语言固化）
+    #[serde(default)]
+    pub language: String,
     #[serde(rename = "_autoStartRegistered", default)]
     pub auto_start_registered: bool,
+}
+
+fn default_ui_scale() -> f32 {
+    1.0
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -146,6 +163,46 @@ pub struct BackupsResponse {
 #[derive(Clone, Debug, Deserialize)]
 pub struct TunnelResponse {
     pub url: Option<String>,
+}
+
+/// `/api/tunnel-download` 子对象：一键下载 cloudflared 的进度
+#[derive(Clone, Debug, Default, Deserialize)]
+pub struct TunnelDownload {
+    #[serde(default)]
+    pub status: String,
+    #[serde(default)]
+    pub error: String,
+    #[serde(default)]
+    pub bytes: i64,
+}
+
+/// `/api/tunnel-status` 完整状态。`error` / `download.error` 是**错误 key**
+/// （`cloudflared_missing`、`download_failed`、`exited`、`url_timeout` …），
+/// 由界面本地化成可读文案；`errorDetail` 是原样透传的诊断信息（退出码、日志尾巴）。
+#[derive(Clone, Debug, Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TunnelStatus {
+    /// `tunnel-start` / `tunnel-remove` 的动作结果；纯状态查询时后端也会带上（恒 true）
+    #[serde(default)]
+    pub ok: bool,
+    #[serde(default)]
+    pub running: bool,
+    #[serde(default)]
+    pub url: String,
+    #[serde(default)]
+    pub mode: String,
+    #[serde(default)]
+    pub error: String,
+    #[serde(default)]
+    pub error_detail: String,
+    #[serde(default)]
+    pub installed: bool,
+    #[serde(default)]
+    pub binary_version: String,
+    #[serde(default)]
+    pub binary_path: String,
+    #[serde(default)]
+    pub download: TunnelDownload,
 }
 
 /// `/api/widget-toggle` 响应：后端翻转后返回组件最新开关状态
@@ -170,6 +227,11 @@ pub enum AppMsg {
     TrashLoaded(Result<TrashResponse, String>),
     BackupsLoaded(Result<BackupsResponse, String>),
     TunnelLoaded(Result<TunnelResponse, String>),
+    /// 隧道完整状态（含 cloudflared 是否安装、错误原因、下载进度）
+    TunnelStatusLoaded(Result<TunnelStatus, String>),
+    /// 只取语言字段：整份设置轮询在「设置-网络」页是被跳过的（防覆盖未提交输入），
+    /// 语言得走这条独立通道，否则在该页切语言永远不生效。
+    LanguageLoaded(Result<LanguageOnly, String>),
     /// 通用写操作结果：ok + 操作描述
     Action(Result<(), String>, String),
     /// 托盘翻转小组件后的新状态

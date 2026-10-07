@@ -65,7 +65,7 @@ def start_tauri(dev_mode: bool = False) -> bool:
     """启动 Tauri 应用进程
 
     Args:
-        dev_mode: 是否使用开发模式（cargo tauri dev，支持热重载）
+        dev_mode: 是否使用开发模式（在 desktop/ 下 `cargo run`，便于改代码后重建）
 
     Returns:
         是否成功启动
@@ -83,9 +83,11 @@ def start_tauri(dev_mode: bool = False) -> bool:
             if not tauri_dir:
                 logger.error("[tauri] no Cargo.toml found for dev mode")
                 return False
-            cmd = ["cargo", "tauri", "dev"]
+            cmd = ["cargo", "run"]
             env = os.environ.copy()
             env["RUSTUP_DIST_SERVER"] = "https://rsproxy.cn"
+            # 原生桌面端经此端口访问 Python 后端 REST API（与生产模式一致）
+            env["BOOTTRACKER_PORT"] = str(PORT)
         else:
             binary = _get_tauri_binary_path()
             if not binary:

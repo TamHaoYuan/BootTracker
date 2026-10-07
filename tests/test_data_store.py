@@ -131,3 +131,121 @@ def test_auto_close_and_new_session(isolated_data):
     # 应有一条新的未关闭会话（今天的）
     unclosed = [s for s in data["sessions"] if s["shutdownTime"] is None]
     assert len(unclosed) >= 1
+
+
+def _freeze_at_utc8(monkeypatch, local_iso: str):
+    """把 data_store 里的"现在"固定在指定 UTC+8 本地时刻。
+
+    time.strftime("%Y-%m-%d") 返回该时刻的本地日期（自动跨日），
+    datetime.now(timezone.utc) 返回同一时刻的 UTC 值，
+    从而让测试不依赖运行机器的时区。
+    """
+    from datetime import datetime as real_datetime, timedelta, timezone
+
+    local = real_datetime.fromisoformat(local_iso).replace(
+        tzinfo=timezone(timedelta(hours=8))
+    )
+    now_utc = local.astimezone(timezone.utc)
+
+    class _FrozenDateTime(real_datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return now_utc if tz is not None else now_utc.replace(tzinfo=None)
+
+    import server.data_store as ds
+
+    # 先取出原始 strftime，避免补丁自身递归
+    _real_strftime = ds.time.strftime
+
+    monkeypatch.setattr(ds, "datetime", _FrozenDateTime)
+    monkeypatch.setattr(
+        ds.time,
+        "strftime",
+        lambda fmt, *a, _f=_real_strftime: _f(fmt, local.timetuple()),
+    )
+    return now_utc
+
+
+def test_local_day_utc_range_boundaries(isolated_data):
+    """本地自然日对应的 UTC 边界应首尾闭合、相邻日无缝。"""
+    from datetime import datetime as _dt, timedelta, timezone
+    from server.data_store import _local_day_utc_range
+
+    start, end = _local_day_utc_range("2026-10-07")
+    expect_start = (
+        _dt.strptime("2026-10-07", "%Y-%m-%d")
+        .astimezone(timezone.utc)
+        .replace(tzinfo=None)
+        .isoformat()
+        + "Z"
+    )
+    assert start == expect_start
+    # 后一天的起点必须等于当天的终点（本地日与 UTC 边界一一对应）
+    assert _local_day_utc_range("2026-10-08")[0] == end
+    # 相邻日严格递增，且跨度恰为 24 小时
+    assert start < end
+    span = _dt.fromisoformat(end.replace("Z", "+00:00")) - _dt.fromisoformat(
+        start.replace("Z", "+00:00")
+    )
+    assert span == timedelta(days=1)
+
+
+def test_no_duplicate_session_when_local_day_follows_utc_day(isolated_data, monkeypatch):
+    """本地凌晨开机（UTC 日仍是前一天）重启时不得重复新建会话。
+
+    回归 D2：原先用 `date(boot_time) = 本地日期` 比较，UTC+8 下本地
+    00:00–08:00 的开机其 UTC 日期属前一天，导致匹配不到而重复新建，
+    并把上一段未收盘会话按当前时间强制收盘。
+    """
+    from server.data_store import (
+        save_data,
+        load_data,
+        auto_close_and_new_session,
+    )
+
+    _freeze_at_utc8(monkeypatch, "2026-10-08T00:35:00")
+
+    # 上一段会话始于同一本地日（= UTC 2026-10-07T16:30Z）
+    save_data({
+        "bootCount": 1,
+        "shutdownCount": 0,
+        "sessions": [
+            {"id": "early", "bootTime": "2026-10-07T16:30:00Z",
+             "shutdownTime": None, "duration": None},
+        ],
+    })
+
+    auto_close_and_new_session()
+    sessions = load_data()["sessions"]
+
+    # 不得因为本地日与 UTC 日不一致而新建第二条会话
+    assert len(sessions) == 1, f"本地凌晨重启误建新会话：{[s['id'] for s in sessions]}"
+    assert sessions[0]["id"] == "early"
+    # 未收盘会话仍应按"启动即收盘"的既有语义被收盘
+    assert sessions[0]["shutdownTime"] is not None
+    # 时长应为 5 分钟（00:30 → 00:35），而不是把开机时间改写成当前时间
+    assert sessions[0]["duration"] == 5 * 60 * 1000
+
+
+def test_same_local_day_restart_does_not_duplicate(isolated_data, monkeypatch):
+    """同一本地日内的二次启动不新建会话（修正后的门禁生效）。"""
+    from server.data_store import (
+        save_data,
+        load_data,
+        auto_close_and_new_session,
+    )
+
+    _freeze_at_utc8(monkeypatch, "2026-10-08T09:00:00")
+    save_data({
+        "bootCount": 1,
+        "shutdownCount": 0,
+        "sessions": [
+            {"id": "morning", "bootTime": "2026-10-08T00:30:00Z",  # 本地 08:30
+             "shutdownTime": None, "duration": None},
+        ],
+    })
+
+    auto_close_and_new_session()
+    sessions = load_data()["sessions"]
+    assert len(sessions) == 1
+    assert sessions[0]["duration"] == 30 * 60 * 1000

@@ -152,6 +152,12 @@ def main() -> None:
 
     # 加载设置并配置开机自启
     settings = load_settings()
+    # 界面语言：language 为空时按操作系统语言固化一次（之后可在设置页覆盖）
+    try:
+        from server.settings import ensure_language
+        ensure_language()
+    except Exception as e:
+        logger.warning(f"[startup] language init failed: {e}")
     if settings.get("autoStart", True):
         if not is_autostart_registered():
             logger.info("[startup] registering autostart")

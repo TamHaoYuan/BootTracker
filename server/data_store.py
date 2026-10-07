@@ -16,7 +16,7 @@ import shutil
 import sqlite3
 import time
 import threading
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from .config import DB_FILE, BACKUP_DIR, MAX_BACKUPS, PID_FILE, PORT
 
@@ -235,6 +235,23 @@ def _utc_iso_to_local_date(iso_str: str) -> str:
         return ""
 
 
+def _local_day_utc_range(local_date: str):
+    """本地自然日 [00:00, 次日 00:00) 对应的 UTC ISO 边界
+
+    boot_time 一律存 UTC（见 auto_close_and_new_session 的 now_iso），
+    而"今天"是本地概念。直接用 `date(boot_time) = 本地日期` 比较会漏判：
+    在 UTC+8 下，本地 00:00–08:00 的开机其 UTC 日期仍属前一天，
+    于是下次启动会误判为"今天还没有会话"而重复新建。
+    """
+    day = datetime.strptime(local_date, "%Y-%m-%d")
+    start = day.astimezone(timezone.utc)
+    end = start + timedelta(days=1)
+    return (
+        start.replace(tzinfo=None).isoformat() + "Z",
+        end.replace(tzinfo=None).isoformat() + "Z",
+    )
+
+
 def auto_close_and_new_session():
     """自动关闭未结束会话并创建新会话"""
     conn = _get_conn()
@@ -250,8 +267,11 @@ def auto_close_and_new_session():
     for row in unclosed:
         try:
             boot = datetime.fromisoformat(row["boot_time"].replace("Z", "+00:00"))
+            if boot.tzinfo is None:
+                # 兼容无时区的历史数据：按 UTC 解释，避免与 now_utc 相减时报错
+                boot = boot.replace(tzinfo=timezone.utc)
             shutdown_iso = now_iso
-            duration_ms = int((now_utc - boot).total_seconds() * 1000)
+            duration_ms = max(0, int((now_utc - boot).total_seconds() * 1000))
             conn.execute(
                 "UPDATE sessions SET shutdown_time = ?, duration = ? WHERE id = ?",
                 (shutdown_iso, duration_ms, row["id"])
@@ -259,10 +279,11 @@ def auto_close_and_new_session():
         except Exception:
             pass
 
-    # 检查今天是否已有未关闭的会话
+    # 检查"今天"（本地自然日）是否已有会话：用 UTC 边界比较，勿用 date(boot_time)
+    day_start_utc, day_end_utc = _local_day_utc_range(today_str)
     today_row = conn.execute(
-        "SELECT COUNT(*) as cnt FROM sessions WHERE shutdown_time IS NULL AND date(boot_time) = ?",
-        (today_str,)
+        "SELECT COUNT(*) as cnt FROM sessions WHERE boot_time >= ? AND boot_time < ?",
+        (day_start_utc, day_end_utc)
     ).fetchone()
 
     if today_row["cnt"] == 0:

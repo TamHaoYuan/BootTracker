@@ -25,6 +25,11 @@ image = "0.25"
 chrono = "0.4"
 rust_xlsxwriter = "0.99.1"
 
+[features]
+# 诊断用 HUD：右下角显示指针位置 / 侧栏判定区宽度 / 悬浮状态 / 展开动画值。
+# 仅排查时启用：cargo build --release --features debug-hud
+debug-hud = []
+
 [profile.release]
 opt-level = 2
 lto = false

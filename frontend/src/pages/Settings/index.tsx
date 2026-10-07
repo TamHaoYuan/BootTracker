@@ -17,6 +17,7 @@ import {
   Tag,
   Tooltip,
   Spin,
+  Slider,
 } from 'antd';
 import type { UploadProps } from 'antd';
 import {
@@ -44,6 +45,12 @@ import {
 import type { AppSettings, VersionHistoryEntry, CheckUpdateResponse } from '../../api/types';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { useThemeStore, applyThemeToDom } from '../../stores/themeStore';
+import {
+  useUiScaleStore,
+  UI_SCALE_MIN,
+  UI_SCALE_MAX,
+  UI_SCALE_STEP,
+} from '../../stores/uiScaleStore';
 import { native, isNativeAvailable } from '../../bridge';
 import { THEME_ACCENTS, type ThemeName } from '../../styles/antd-theme';
 
@@ -91,6 +98,9 @@ function Settings() {
   const { message, modal } = AntdApp.useApp();
   const { settings, setSettings, patch } = useSettingsStore();
   const { mode: storeMode, theme: storeTheme, setMode, setTheme } = useThemeStore();
+  // 页面缩放（纯前端偏好，localStorage 持久化，见 stores/uiScaleStore.ts）
+  const uiScale = useUiScaleStore((s) => s.uiScale);
+  const setUiScale = useUiScaleStore((s) => s.setUiScale);
 
   const [loading, setLoading] = useState(true);
   const [tunnelUrl, setTunnelUrl] = useState<string | null>(null);
@@ -466,6 +476,27 @@ function Settings() {
 
       <Card style={CARD_STYLE} styles={{ body: CARD_BODY_STYLE }} title="显示偏好">
         <Form layout="vertical">
+          <Form.Item label={<span style={LABEL_STYLE}>页面缩放</span>}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+              <Slider
+                min={UI_SCALE_MIN}
+                max={UI_SCALE_MAX}
+                step={UI_SCALE_STEP}
+                value={uiScale}
+                onChange={(v: number) => setUiScale(v)}
+                tooltip={{ formatter: (v) => `${Math.round((v ?? 1) * 100)}%` }}
+                style={{ flex: 1, minWidth: 220, margin: 0 }}
+                marks={{ 0.8: '80%', 1: '100%', 1.25: '125%', 1.5: '150%' }}
+              />
+              <Button size="small" onClick={() => setUiScale(1)}>
+                重置
+              </Button>
+            </div>
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              当前 {Math.round(uiScale * 100)}% · 快捷键 Ctrl + 加号/减号/0，或 Ctrl + 滚轮。
+              该偏好仅保存在本机浏览器（localStorage），不影响其它设备。
+            </Text>
+          </Form.Item>
           <Form.Item label={<span style={LABEL_STYLE}>默认图表类型</span>}>
             <Radio.Group
               value={settings?.defaultChartType}

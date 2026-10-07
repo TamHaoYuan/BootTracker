@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
 import { useThemeStore, applyThemeToDom } from './stores/themeStore';
+import { useUiScaleStore, applyUiScale } from './stores/uiScaleStore';
 
 const container = document.getElementById('root');
 if (!container) {
@@ -13,6 +14,9 @@ if (!container) {
   const { mode, theme } = useThemeStore.getState();
   applyThemeToDom(mode, theme);
 }
+
+// 同理，首帧渲染前应用持久化缩放：否则先按 100% 画一帧再跳到目标比例，肉眼可见抖动
+applyUiScale(useUiScaleStore.getState().uiScale);
 
 createRoot(container).render(
   <StrictMode>

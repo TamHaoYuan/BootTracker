@@ -27,10 +27,10 @@ pub fn build_tray(
     tx: Sender<TrayAction>,
     icon: tray_icon::Icon,
 ) -> Option<(TrayIcon, CheckMenuItem)> {
-    let show_item = MenuItem::new("显示窗口", true, None);
-    let hide_item = MenuItem::new("隐藏窗口", true, None);
-    let widget_item = CheckMenuItem::new("桌面小组件", true, false, None);
-    let quit_item = MenuItem::new("退出", true, None);
+    let show_item = MenuItem::new(crate::t!("显示窗口"), true, None);
+    let hide_item = MenuItem::new(crate::t!("隐藏窗口"), true, None);
+    let widget_item = CheckMenuItem::new(crate::t!("桌面小组件"), true, false, None);
+    let quit_item = MenuItem::new(crate::t!("退出"), true, None);
 
     // 记录各菜单项 id，事件到来时据此判定来源（id 由 muda 自动生成）
     let show_id = show_item.id().clone();
@@ -42,7 +42,7 @@ pub fn build_tray(
 
     let tray = TrayIconBuilder::new()
         .with_menu(Box::new(menu))
-        .with_tooltip("开机记录")
+        .with_tooltip(crate::t!("开机记录"))
         .with_icon(icon)
         .build()
         .ok()?;

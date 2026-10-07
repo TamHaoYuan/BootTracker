@@ -13,6 +13,8 @@ use std::time::Duration;
 use egui::{Color32, Context, Pos2, RichText, Rounding, Sense, Vec2, ViewportCommand};
 use serde::Deserialize;
 
+mod i18n;
+
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct BootSession {
@@ -39,6 +41,9 @@ struct AppSettings {
     widget_position: String,
     #[serde(default)]
     app_theme: String,
+    /// 界面语言（`""` = 跟随系统，`zh-CN` / `en-US` = 手动覆盖）
+    #[serde(default)]
+    language: String,
 }
 
 enum WMsg {
@@ -185,9 +190,13 @@ impl eframe::App for WidgetApp {
                 WMsg::Settings(r) => {
                     if let Ok(s) = r {
                         self.dark = s.app_mode != "light";
-                if !s.app_theme.is_empty() {
-                    self.theme = s.app_theme.clone();
-                }
+                        if !s.app_theme.is_empty() {
+                            self.theme = s.app_theme.clone();
+                        }
+                        // 语言跟随设置（用户可能在 Web/桌面端切过）；空串表示「跟随系统」
+                        if !s.language.is_empty() {
+                            i18n::set_lang(i18n::Lang::from_code(&s.language));
+                        }
                         if let Some((x, y)) = s
                             .widget_position
                             .split_once(',')
@@ -282,9 +291,9 @@ impl eframe::App for WidgetApp {
             ui.vertical_centered(|ui| {
                 ui.add_space(10.0);
                 ui.label(
-                    RichText::new(format!(
-                        "{}  本次开机",
-                        egui_phosphor::regular::POWER
+                    RichText::new(crate::i18n::format_placeholders(
+                        crate::t!("{}  本次开机"),
+                        &[&egui_phosphor::regular::POWER],
                     ))
                     .color(text_color)
                     .weak(),
@@ -307,9 +316,9 @@ impl eframe::App for WidgetApp {
                     }
                     None => {
                         ui.label(
-                            RichText::new(format!(
-                                "{}  无进行中会话",
-                                egui_phosphor::regular::MOON
+                            RichText::new(crate::i18n::format_placeholders(
+                                crate::t!("{}  无进行中会话"),
+                                &[&egui_phosphor::regular::MOON],
                             ))
                             .color(text_color),
                         );
@@ -321,9 +330,9 @@ impl eframe::App for WidgetApp {
             // 右键菜单
             resp.context_menu(|ui| {
                 if ui
-                    .button(format!(
-                        "{}  打开主界面",
-                        egui_phosphor::regular::ARROW_UP_RIGHT
+                    .button(crate::i18n::format_placeholders(
+                        crate::t!("{}  打开主界面"),
+                        &[&egui_phosphor::regular::ARROW_UP_RIGHT],
                     ))
                     .clicked()
                 {
@@ -331,7 +340,10 @@ impl eframe::App for WidgetApp {
                     ui.close_menu();
                 }
                 if ui
-                    .button(format!("{}  隐藏组件", egui_phosphor::regular::X))
+                    .button(crate::i18n::format_placeholders(
+                        crate::t!("{}  隐藏组件"),
+                        &[&egui_phosphor::regular::X],
+                    ))
                     .clicked()
                 {
                     self.hide_self();
@@ -348,11 +360,11 @@ fn fmt_duration(ms: i64) -> String {
     let m = (secs % 3600) / 60;
     let s = secs % 60;
     if h > 0 {
-        format!("{h}时{m}分{s}秒")
+        crate::i18n::format_placeholders(crate::t!("{h}时{m}分{s}秒"), &[&h, &m, &s])
     } else if m > 0 {
-        format!("{m}分{s}秒")
+        crate::i18n::format_placeholders(crate::t!("{m}分{s}秒"), &[&m, &s])
     } else {
-        format!("{s}秒")
+        crate::i18n::format_placeholders(crate::t!("{s}秒"), &[&s])
     }
 }
 
@@ -372,9 +384,13 @@ fn accent_for(theme: &str) -> Color32 {
 }
 
 fn main() -> eframe::Result<()> {
+    // 语言必须在首帧之前定下来：先按系统语言起，随后 `WMsg::Settings` 会用后端
+    // 的 `language` 覆盖（用户可能手动指定过），切换后会立即重绘。
+    i18n::set_lang(i18n::Lang::from_code(&i18n::detect_os_language()));
+    let title = crate::t!("开机记录组件");
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
-            .with_title("开机记录组件")
+            .with_title(title)
             .with_inner_size(Vec2::new(240.0, 96.0))
             .with_decorations(false)
             .with_always_on_top()
@@ -383,7 +399,7 @@ fn main() -> eframe::Result<()> {
         ..Default::default()
     };
     eframe::run_native(
-        "开机记录组件",
+        title,
         options,
         Box::new(|cc| {
             register_cjk_font(&cc.egui_ctx);
@@ -429,5 +445,8 @@ fn register_cjk_font(ctx: &Context) {
             return;
         }
     }
-    eprintln!("[boot-tracker-widget] 未找到系统中文字体，中文将显示为方格");
+    eprintln!(
+        "{}",
+        crate::t!("[boot-tracker-widget] 未找到系统中文字体，中文将显示为方格")
+    );
 }

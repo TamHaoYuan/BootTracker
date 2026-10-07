@@ -1,0 +1,1 @@
+import{h as e}from"./index-Bs2oo_9t.js";const i={daily:()=>e.get("/stats/daily").then(t=>t.data),weekly:()=>e.get("/stats/weekly").then(t=>t.data),trend:(t=30)=>e.get(`/stats/trend?days=${t}`).then(a=>a),overview:()=>e.get("/stats/overview"),anomalies:()=>e.get("/stats/anomalies")};export{i as s};

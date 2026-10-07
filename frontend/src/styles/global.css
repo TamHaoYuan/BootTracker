@@ -424,22 +424,118 @@
   color: var(--text-secondary) !important;
 }
 
-/* 浅色模式下 AntD 组件微调 */
-body.light-mode .ant-card {
-  background: rgba(255, 255, 255, 0.85) !important;
+/* ========== 弹层类组件统一底色（暗色下最常"漏白"的一组） ==========
+   这些组件都由 AntD 渲染到 body 下（portal / rc-trigger 内联 z-index），
+   全局 CSS 与 AntD 的 CSS-in-JS 同权重，靠加载顺序取胜；本文件在 main.tsx
+   里于 ConfigProvider 之前 import，开发模式下 HMR 注入的样式顺序会变，
+   故对背景/文字/边框一律用 !important 锁定，避免 HMR 后闪回默认白底。 */
+.ant-picker-dropdown,
+.ant-dropdown-menu,
+.ant-select-dropdown,
+.ant-popover-inner,
+.ant-tooltip-inner,
+.ant-notification-notice,
+.ant-message-notice-content,
+.ant-modal-content,
+.ant-drawer-content,
+.ant-menu,
+.ant-dropdown,
+.ant-cascader-dropdown,
+.ant-time-picker-panel {
+  background: var(--bg-card) !important;
+  color: var(--text-primary) !important;
+  border: 1px solid var(--border-color) !important;
+  box-shadow: 0 12px 40px var(--shadow-color), inset 0 1px 0 var(--glass-light) !important;
 }
+.ant-picker-dropdown .ant-picker-panel-container,
+.ant-picker-dropdown .ant-picker-panel,
+.ant-picker-dropdown .ant-picker-header,
+.ant-picker-dropdown .ant-picker-content th,
+.ant-picker-dropdown .ant-picker-footer,
+.ant-picker-dropdown .ant-picker-datetime-panel {
+  background: var(--bg-card) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-light) !important;
+}
+.ant-picker-dropdown .ant-picker-cell,
+.ant-picker-dropdown .ant-picker-header-view,
+.ant-picker-dropdown .ant-picker-time-panel-column > li {
+  color: var(--text-secondary) !important;
+}
+.ant-picker-dropdown .ant-picker-cell-in-view {
+  color: var(--text-primary) !important;
+}
+.ant-picker-dropdown .ant-picker-cell-disabled::before {
+  background: transparent !important;
+}
+.ant-picker-dropdown .ant-picker-cell-inner:hover,
+.ant-picker-dropdown .ant-picker-time-panel-column > li:hover {
+  background: var(--glass-hover) !important;
+}
+.ant-picker-dropdown .ant-picker-cell-selected .ant-picker-cell-inner,
+.ant-picker-dropdown .ant-picker-cell-today .ant-picker-cell-inner::before,
+.ant-picker-dropdown .ant-picker-today-btn {
+  color: var(--accent) !important;
+  border-color: var(--accent) !important;
+}
+.ant-picker-dropdown .ant-picker-cell-selected .ant-picker-cell-inner {
+  background: rgba(var(--accent-rgb), 0.2) !important;
+}
+.ant-picker-dropdown .ant-picker-header button,
+.ant-picker-dropdown .ant-picker-super-prev-icon,
+.ant-picker-dropdown .ant-picker-super-next-icon {
+  color: var(--text-muted) !important;
+}
+.ant-picker-time-panel-column:not(:first-child) {
+  border-left: 1px solid var(--border-light) !important;
+}
+
+/* 通知 / 全局提示 / 气泡确认 */
+.ant-notification-notice-message,
+.ant-notification-notice-description,
+.ant-popconfirm-message-title,
+.ant-popconfirm-description,
+.ant-dropdown-menu-item,
+.ant-menu-item,
+.ant-menu-submenu-title {
+  color: var(--text-primary) !important;
+}
+.ant-dropdown-menu-item:hover,
+.ant-menu-item:hover,
+.ant-menu-submenu-title:hover {
+  background: var(--glass-hover) !important;
+}
+.ant-message-notice-content {
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+.ant-notification-notice-close,
+.ant-message .anticon {
+  color: var(--text-muted) !important;
+}
+.ant-popover-arrow::before,
+.ant-tooltip-arrow::before,
+.ant-dropdown-arrow::before {
+  background: var(--bg-card) !important;
+}
+.ant-popover-arrow::after,
+.ant-tooltip-arrow::after {
+  background: var(--bg-card) !important;
+}
+
+/* 浅色模式：外壳用更实的白，避免透视下层内容 */
 body.light-mode .ant-layout-sider {
-  background: rgba(255, 255, 255, 0.9) !important;
+  background: rgba(255, 255, 255, 0.94) !important;
 }
 body.light-mode .ant-layout-header {
-  background: rgba(255, 255, 255, 0.85) !important;
+  background: rgba(255, 255, 255, 0.9) !important;
   border-bottom: 1px solid rgba(0, 0, 0, 0.06);
 }
 body.light-mode .ant-modal-content {
-  background: rgba(255, 255, 255, 0.95) !important;
+  background: rgba(255, 255, 255, 0.96) !important;
 }
 body.light-mode .ant-table-thead > tr > th {
-  background: rgba(255, 255, 255, 0.95) !important;
+  background: rgba(241, 245, 249, 0.95) !important;
 }
 
 /* ========== 响应式 ========== */

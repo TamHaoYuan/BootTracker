@@ -7,7 +7,7 @@ from typing import Tuple, Dict
 from ..settings import load_settings, save_settings, setup_autostart, is_autostart_registered
 from ..data_store import MAX_BACKUPS
 from ..config import PORT
-from ..tunnel import start_tunnel, stop_tunnel, _tunnel_proc
+from ..tunnel import start_tunnel, stop_tunnel, tunnel_state
 from ..widget import start_widget, stop_widget, is_widget_running
 from ..logging_config import logger
 from . import get, post, put
@@ -17,7 +17,7 @@ _VALID_KEYS = {
     "autoStart", "autoBackup", "backupCount", "autoCloseIdle",
     "idleCloseMinutes", "defaultChartType", "timeFormat",
     "lanAccess", "tunnelEnabled", "tunnelToken", "customDomain", "customBgImage",
-    "widgetEnabled", "appTheme", "widgetPosition",
+    "widgetEnabled", "appTheme", "widgetPosition", "uiScale", "language",
 }
 
 
@@ -41,6 +41,15 @@ def _validate_and_convert(key: str, value) -> Tuple[bool, any]:
             return False, "idleCloseMinutes must be integer"
     elif key in ("autoStart", "autoBackup", "autoCloseIdle", "lanAccess", "tunnelEnabled", "widgetEnabled"):
         return True, bool(value)
+    elif key == "uiScale":
+        try:
+            v = float(value)
+        except (TypeError, ValueError):
+            return False, "uiScale must be a number"
+        if v < 0.5 or v > 2.0:
+            return False, "uiScale must be 0.5-2.0"
+        # 保留两位小数，避免前端滚轮缩放写入一长串浮点尾数
+        return True, round(v, 2)
     elif key == "defaultChartType":
         if value not in ("bar", "line"):
             return False, "defaultChartType must be bar or line"
@@ -51,6 +60,10 @@ def _validate_and_convert(key: str, value) -> Tuple[bool, any]:
         return True, value
     elif key in ("tunnelToken", "customDomain"):
         return True, str(value).strip()
+    elif key == "language":
+        if value not in ("", "zh-CN", "en-US"):
+            return False, "language must be zh-CN, en-US or empty"
+        return True, value
     return True, value
 
 
@@ -98,7 +111,7 @@ def update_settings(req, body) -> Tuple[int, Dict]:
 
     old_token = settings.get("tunnelToken", "").strip()
     old_domain = settings.get("customDomain", "").strip()
-    tunnel_was_running = _tunnel_proc is not None
+    tunnel_was_running = tunnel_state()["running"]
     widget_was_enabled = bool(settings.get("widgetEnabled", False))
 
     settings.update(updates)

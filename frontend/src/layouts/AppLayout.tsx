@@ -405,10 +405,14 @@ function AppLayout() {
           style={{
             position: 'absolute',
             inset: 0,
-            background: mode === 'dark'
-              ? 'rgba(10, 10, 12, 0.72)'
-              : 'rgba(248, 250, 252, 0.72)',
-            backdropFilter: 'blur(2px)',
+            // 自定义背景图下的可读性蒙层：整体压暗 + 中心略亮、四周压得更暗，
+            // 保证卡片外的文字（页面标题、说明）在亮色照片上也读得清。
+            background:
+              mode === 'dark'
+                ? 'radial-gradient(120% 80% at 50% 0%, rgba(10,10,12,0.66) 0%, rgba(10,10,12,0.86) 100%)'
+                : 'radial-gradient(120% 80% at 50% 0%, rgba(248,250,252,0.78) 0%, rgba(248,250,252,0.92) 100%)',
+            backdropFilter: 'blur(3px)',
+            WebkitBackdropFilter: 'blur(3px)',
             zIndex: 0,
             pointerEvents: 'none',
           }}

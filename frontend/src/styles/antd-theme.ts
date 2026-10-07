@@ -31,6 +31,10 @@ export function buildAntdTheme(mode: AppMode, theme: ThemeName): ThemeConfig {
       colorPrimary: accent.primary,
       colorInfo: accent.secondary,
       colorBgBase: mode === 'dark' ? '#0a0a0c' : '#f8fafc',
+      // 注意：不要把 colorBgElevated / colorBgContainer 指向 CSS 变量——
+      // AntD 会用 seed 派生灰阶，tinycolor 解析不了 `var(...)` 会退化成黑色，
+      // 反而把浮层染灰。浮层底色统一由 styles/global.css 的弹层规则接管。
+      colorBorderSecondary: 'var(--border-color)',
       colorTextBase: mode === 'dark' ? '#fafafa' : '#0f172a',
       colorBorder: mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)',
       borderRadius: 8,
